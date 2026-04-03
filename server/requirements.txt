@@ -1,9 +1,9 @@
-fastapi
+fastapi~=0.135.3
 uvicorn
 python-dotenv
 psycopg2-binary
 python-jose[cryptography]
 python-multipart
 python-dateutil
-python-uuid
-python-uuid
+# python-uuid
+pydantic~=2.12.5
