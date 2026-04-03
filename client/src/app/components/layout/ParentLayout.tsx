@@ -72,7 +72,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             return (
               <button
                 key={child.id}
-                onClick={() => {console.log(child.id);setActiveChildId(child.id);}}
+                onClick={() => { console.log(child.id); setActiveChildId(child.id); }}
                 className="w-full flex items-center gap-3 px-5 py-2.5 transition-colors text-left"
                 style={{ backgroundColor: isActive ? "#D1FAE5" : "transparent" }}
               >
@@ -191,8 +191,8 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
 
 export function ParentLayout({ children }: ParentLayoutProps) {
   return (
-    
-    <ParentLayoutInner>{children}</ParentLayoutInner>
-    
+    <ParentChildProvider>
+      <ParentLayoutInner>{children}</ParentLayoutInner>
+    </ParentChildProvider>
   );
 }
