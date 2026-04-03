@@ -1,0 +1,322 @@
+import { useState } from "react";
+import { Send, Clock, CheckCircle, ChevronDown, ChevronUp, Plus, X, Shield, BookOpen, Lightbulb, MessageSquare } from "lucide-react";
+import { parentQuestionThreads } from "../../data/mockData";
+import { useActiveChild } from "../../context/ParentChildContext";
+
+const priorityConfig: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
+  red: { label: "Wellbeing / Safety", color: "#EF4444", bg: "#FEF2F2", border: "#FECACA", icon: <Shield size={12} /> },
+  orange: { label: "Academic Concern", color: "#D97706", bg: "#FFFBEB", border: "#FDE68A", icon: <BookOpen size={12} /> },
+  yellow: { label: "General", color: "#92400E", bg: "#FEFCE8", border: "#FEF08A", icon: <Lightbulb size={12} /> },
+};
+
+type Thread = typeof parentQuestionThreads[0] & {
+  messages: Array<{ id: number; from: string; content: string; timestamp: string }>;
+};
+
+export function ParentQuestions() {
+  const { activeChild: student } = useActiveChild();
+  const [threads, setThreads] = useState<Thread[]>(parentQuestionThreads as Thread[]);
+  const [expandedId, setExpandedId] = useState<number | null>(1);
+  const [followUps, setFollowUps] = useState<Record<number, string>>({});
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({ subject: "", content: "", priority: "orange" });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleFollowUp = (threadId: number) => {
+    const text = followUps[threadId];
+    if (!text?.trim()) return;
+    setThreads(prev => prev.map(t =>
+      t.id === threadId
+        ? { ...t, status: "pending", messages: [...t.messages, { id: t.messages.length + 1, from: "parent", content: text, timestamp: "Just now" }] }
+        : t
+    ));
+    setFollowUps(prev => ({ ...prev, [threadId]: "" }));
+  };
+
+  const handleNewQuestion = () => {
+    if (!newQuestion.subject.trim() || !newQuestion.content.trim()) return;
+    setSubmitting(true);
+    setTimeout(() => {
+      const newThread: Thread = {
+        id: threads.length + 1,
+        subject: newQuestion.subject,
+        teacher: "Ms. Jennifer Thompson",
+        teacherInitials: "MT",
+        teacherColor: "#2563EB",
+        status: "pending",
+        priority: newQuestion.priority,
+        createdAt: "Just now",
+        messages: [{ id: 1, from: "parent", content: newQuestion.content, timestamp: "Just now" }],
+      };
+      setThreads(prev => [newThread, ...prev]);
+      setNewQuestion({ subject: "", content: "", priority: "orange" });
+      setShowNewForm(false);
+      setSubmitting(false);
+      setExpandedId(newThread.id);
+    }, 600);
+  };
+
+  return (
+    <>
+      <div className="p-6 max-w-3xl mx-auto">
+
+        {/* Header */}
+        <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>Ask a Teacher</h1>
+            <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
+              Post questions to {student.firstName}'s teachers — they'll respond directly. You can follow up any time.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowNewForm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all"
+            style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
+          >
+            <Plus size={16} />
+            New Question
+          </button>
+        </div>
+
+        {/* New question form */}
+        {showNewForm && (
+          <div className="mb-6 bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>Ask a New Question</h2>
+              <button onClick={() => setShowNewForm(false)}>
+                <X size={18} style={{ color: "#94A3B8" }} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>Subject / Topic</label>
+                <input
+                  type="text"
+                  value={newQuestion.subject}
+                  onChange={e => setNewQuestion(p => ({ ...p, subject: e.target.value }))}
+                  placeholder={`e.g. ${student.firstName}'s reading progress this term`}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  style={{ backgroundColor: "#F8FAFC", color: "#1E293B" }}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>Category</label>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.entries(priorityConfig) as [string, typeof priorityConfig[string]][]).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      onClick={() => setNewQuestion(p => ({ ...p, priority: key }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all"
+                      style={{
+                        backgroundColor: newQuestion.priority === key ? cfg.bg : "white",
+                        borderColor: newQuestion.priority === key ? cfg.border : "#E2E8F0",
+                        color: newQuestion.priority === key ? cfg.color : "#64748B",
+                        fontWeight: newQuestion.priority === key ? 600 : 400,
+                      }}
+                    >
+                      <span style={{ color: cfg.color }}>{cfg.icon}</span>
+                      {cfg.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>Your Question</label>
+                <textarea
+                  value={newQuestion.content}
+                  onChange={e => setNewQuestion(p => ({ ...p, content: e.target.value }))}
+                  placeholder="Write your question here..."
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                  style={{ backgroundColor: "#F8FAFC", color: "#1E293B" }}
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowNewForm(false)}
+                  className="px-4 py-2 rounded-xl text-sm border border-slate-200 hover:bg-slate-50 transition-colors"
+                  style={{ color: "#64748B" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNewQuestion}
+                  disabled={!newQuestion.subject.trim() || !newQuestion.content.trim() || submitting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-white hover:opacity-90 transition-all disabled:opacity-40"
+                  style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
+                >
+                  <Send size={14} />
+                  {submitting ? "Sending..." : "Send to Teacher"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Threads list */}
+        <div className="space-y-3">
+          {threads.map(thread => {
+            const priority = priorityConfig[thread.priority];
+            const isExpanded = expandedId === thread.id;
+            const lastMsg = thread.messages[thread.messages.length - 1];
+
+            return (
+              <div
+                key={thread.id}
+                className="bg-white rounded-2xl border shadow-sm overflow-hidden transition-shadow hover:shadow-md"
+                style={{ borderColor: thread.status === "pending" ? priority.border : "#E2E8F0" }}
+              >
+                {/* Thread header — always visible */}
+                <button
+                  className="w-full px-5 py-4 flex items-start gap-3 text-left"
+                  onClick={() => setExpandedId(isExpanded ? null : thread.id)}
+                >
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5" style={{ backgroundColor: thread.teacherColor, fontWeight: 700 }}>
+                    {thread.teacherInitials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>{thread.subject}</p>
+                      {thread.status === "pending" && (
+                        <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: "#FEF3C7", color: "#D97706", fontWeight: 500 }}>
+                          <Clock size={10} />Awaiting reply
+                        </span>
+                      )}
+                      {thread.status === "answered" && (
+                        <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: "#D1FAE5", color: "#065F46", fontWeight: 500 }}>
+                          <CheckCircle size={10} />Answered
+                        </span>
+                      )}
+                      <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: priority.bg, color: priority.color, fontWeight: 500 }}>
+                        <span style={{ color: priority.color }}>{priority.icon}</span>
+                        {priority.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs" style={{ color: "#64748B" }}>{thread.teacher}</p>
+                      <span style={{ color: "#CBD5E1" }}>·</span>
+                      <p className="text-xs" style={{ color: "#94A3B8" }}>{thread.createdAt}</p>
+                      <span style={{ color: "#CBD5E1" }}>·</span>
+                      <p className="text-xs" style={{ color: "#94A3B8" }}>{thread.messages.length} message{thread.messages.length !== 1 ? "s" : ""}</p>
+                    </div>
+                    {!isExpanded && (
+                      <p className="text-xs mt-1 truncate" style={{ color: "#64748B" }}>
+                        {lastMsg.from === "teacher" ? `${thread.teacherInitials}: ` : "You: "}{lastMsg.content}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0 mt-1">
+                    {isExpanded ? <ChevronUp size={16} style={{ color: "#94A3B8" }} /> : <ChevronDown size={16} style={{ color: "#94A3B8" }} />}
+                  </div>
+                </button>
+
+                {/* Expanded thread */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100">
+                    {/* Messages */}
+                    <div className="px-5 py-4 space-y-4">
+                      {thread.messages.map((msg, idx) => (
+                        <div key={msg.id} className="flex gap-3">
+                          {msg.from === "teacher" ? (
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5" style={{ backgroundColor: thread.teacherColor, fontWeight: 700 }}>
+                              {thread.teacherInitials}
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5" style={{ backgroundColor: "#10B981", fontWeight: 700 }}>
+                              SW
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs" style={{ fontWeight: 600, color: "#1E293B" }}>
+                                {msg.from === "teacher" ? thread.teacher : "Sarah Williams (You)"}
+                              </span>
+                              {idx === 0 && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F1F5F9", color: "#94A3B8" }}>Original question</span>
+                              )}
+                              <span className="text-xs" style={{ color: "#94A3B8" }}>{msg.timestamp}</span>
+                            </div>
+                            <div
+                              className="p-3 rounded-xl text-sm"
+                              style={{
+                                backgroundColor: msg.from === "teacher" ? "#F0FDF4" : "#F8FAFC",
+                                border: `1px solid ${msg.from === "teacher" ? "#86EFAC" : "#E2E8F0"}`,
+                                color: "#1E293B",
+                                lineHeight: "1.7",
+                              }}
+                            >
+                              {msg.content}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Pending notice */}
+                      {thread.status === "pending" && (
+                        <div className="flex items-center gap-2 py-2 px-3 rounded-xl" style={{ backgroundColor: "#FFFBEB", border: "1px solid #FDE68A" }}>
+                          <Clock size={13} style={{ color: "#D97706" }} />
+                          <p className="text-xs" style={{ color: "#92400E" }}>
+                            Your question has been sent to {thread.teacher}. They usually respond within 24 hours.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Follow-up input */}
+                    <div className="px-5 pb-4 border-t border-slate-100 pt-4">
+                      <p className="text-xs mb-2" style={{ fontWeight: 500, color: "#64748B" }}>
+                        <MessageSquare size={12} className="inline mr-1" />
+                        {thread.status === "answered" ? "Have a follow-up question?" : "Add more context:"}
+                      </p>
+                      <div className="flex gap-2">
+                        <textarea
+                          value={followUps[thread.id] || ""}
+                          onChange={e => setFollowUps(prev => ({ ...prev, [thread.id]: e.target.value }))}
+                          placeholder={thread.status === "answered" ? "Ask a follow-up question..." : "Add more details to your question..."}
+                          rows={2}
+                          className="flex-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                          style={{ backgroundColor: "#F8FAFC", color: "#1E293B" }}
+                          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleFollowUp(thread.id); } }}
+                        />
+                        <button
+                          onClick={() => handleFollowUp(thread.id)}
+                          disabled={!followUps[thread.id]?.trim()}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-white hover:opacity-90 transition-all disabled:opacity-40 self-end"
+                          style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
+                        >
+                          <Send size={14} />
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {threads.length === 0 && (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "#F1F5F9" }}>
+              <MessageSquare size={28} style={{ color: "#94A3B8" }} />
+            </div>
+            <p style={{ fontWeight: 600, color: "#1E293B" }}>No questions yet</p>
+            <p className="text-sm mt-1 mb-4" style={{ color: "#94A3B8" }}>Ask {student.firstName}'s teacher a question and they'll respond here.</p>
+            <button
+              onClick={() => setShowNewForm(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all mx-auto"
+              style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
+            >
+              <Plus size={16} />Ask a Teacher
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
