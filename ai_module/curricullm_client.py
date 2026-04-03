@@ -19,8 +19,12 @@ class CurricuLLMClient:
             base_url="https://api.curricullm.com/v1",
         )
 
-    def generate_parent_report(self, student_payload: dict[str, Any]) -> dict[str, Any]:
-        prompt = self._build_prompt(student_payload)
+    def generate_parent_report(
+        self,
+        student_payload: dict[str, Any],
+        rag_context: str | None = None,
+    ) -> dict[str, Any]:
+        prompt = self._build_prompt(student_payload, rag_context)
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -51,12 +55,16 @@ class CurricuLLMClient:
                 f"CurricuLLM did not return valid JSON.\nRaw response:\n{content}"
             ) from exc
 
-    def _build_prompt(self, student_payload: dict[str, Any]) -> str:
+    def _build_prompt(
+        self,
+        student_payload: dict[str, Any],
+        rag_context: str | None = None,
+    ) -> str:
         student = student_payload["student"]
         latest_week = student_payload["latest_week"]
         records = student_payload["weekly_records"]
 
-        prompt_body = {
+        prompt_body: dict[str, Any] = {
             "task": "Create a weekly parent report for one student.",
             "requirements": [
                 "Identify strengths based on positive performance or improvement trends.",
@@ -86,5 +94,12 @@ class CurricuLLMClient:
             "latest_week": latest_week,
             "weekly_records": records,
         }
+
+        if rag_context and rag_context.strip():
+            prompt_body["retrieved_knowledge_base_excerpts"] = rag_context.strip()
+            prompt_body["requirements"].append(
+                "When relevant, align parent-facing suggestions with the retrieved knowledge base excerpts. "
+                "Do not contradict the student's actual weekly_records; excerpts are guidance only."
+            )
 
         return json.dumps(prompt_body, ensure_ascii=False, indent=2)

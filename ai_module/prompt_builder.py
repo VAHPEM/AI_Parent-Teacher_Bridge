@@ -79,4 +79,4 @@ def _format_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "teacher_comment": r["teacher_comment"]
         })
 
-    return formattedsource
+    return formatted
