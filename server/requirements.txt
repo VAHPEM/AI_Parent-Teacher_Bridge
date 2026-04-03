@@ -1,9 +1,10 @@
 fastapi~=0.135.3
 uvicorn
-python-dotenv
+python-dotenv~=1.2.2
 psycopg2-binary
 python-jose[cryptography]
 python-multipart
 python-dateutil
 # python-uuid
 pydantic~=2.12.5
+SQLAlchemy~=2.0.48
