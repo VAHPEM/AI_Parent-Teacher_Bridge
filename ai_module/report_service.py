@@ -2,6 +2,7 @@ from typing import Any
 
 from db import fetch_student_payload, save_ai_report
 from curricullm_client import CurricuLLMClient
+from rag_store import retrieve_rag_context
 
 
 client = CurricuLLMClient()
@@ -24,7 +25,11 @@ def generate_report_for_student(student_id: int) -> int:
     if not student_payload:
         raise ValueError(f"Student with id={student_id} not found.")
 
-    ai_report = client.generate_parent_report(student_payload)
+    rag_context = retrieve_rag_context(student_payload)
+    ai_report = client.generate_parent_report(
+        student_payload,
+        rag_context=rag_context if rag_context else None,
+    )
     validated_report = _validate_and_normalize_report(ai_report, student_payload)
 
     report_id = save_ai_report(validated_report)
