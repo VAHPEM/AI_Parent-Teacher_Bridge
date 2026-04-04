@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, AlertCircle, Sparkles } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
+import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
 
 const suggestedQuestions = [
@@ -18,7 +18,7 @@ interface Message {
 }
 
 export function ParentAIChat() {
-  const { activeChild: student } = useActiveChild();
+  const { activeChild: student } = useParentChild();
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, from: "ai", content: "Hi! I'm the EduTrack AI assistant. I can help you with your child's learning progress, suggest home activities, or explain assessment results. What would you like to know?", timestamp: "Just now" }
   ]);

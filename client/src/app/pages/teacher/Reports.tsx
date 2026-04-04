@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FileText, Download, Eye, Calendar, CheckCircle, Clock } from "lucide-react";
 import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   ready: { label: "Ready to Send", color: "#10B981", bg: "#D1FAE5", icon: <CheckCircle size={12} /> },
@@ -13,15 +14,13 @@ export function Reports() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    api.get<any>("/teacher/reports").then(setData);
+    api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}`).then(setData);
   }, []);
 
   const handleGenerate = () => {
     setGenerating(true);
-    // Hardcoded parameters class_id=1, term=Term 2, week=8 to match mock logic
-    // Usually these would come from state drop-downs
     api.post("/teacher/reports/generate?class_id=1&term=Term%202&week=8", {}).then(() => {
-      api.get<any>("/teacher/reports").then(setData);
+      api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}`).then(setData);
       setGenerating(false);
     });
   };

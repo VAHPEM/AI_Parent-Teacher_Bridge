@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Send, Clock, CheckCircle, ChevronDown, ChevronUp, Plus, X, Shield, BookOpen, Lightbulb, MessageSquare } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
+import {useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
+import { DEMO_PARENT_ID } from "../../lib/config";
 
 const priorityConfig: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   red: { label: "Wellbeing / Safety", color: "#EF4444", bg: "#FEF2F2", border: "#FECACA", icon: <Shield size={12} /> },
@@ -22,7 +23,7 @@ type Thread = {
 };
 
 export function ParentQuestions() {
-  const { activeChild: student } = useActiveChild();
+  const { activeChild: student , parent} = useParentChild();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [followUps, setFollowUps] = useState<Record<number, string>>({});
@@ -32,7 +33,7 @@ export function ParentQuestions() {
 
   useEffect(() => {
     if (!student) return;
-    api.get<any[]>(`/parent/questions/${student.id}`).then((data) => {
+    api.get<any[]>(`/parent/questions/${student.id}?parent_id=${DEMO_PARENT_ID}`).then((data) => {
       const mapped = data.map((q) => ({
         id: q.id,
         subject: q.subject,
@@ -60,7 +61,7 @@ export function ParentQuestions() {
   const handleFollowUp = (threadId: number) => {
     const text = followUps[threadId];
     if (!text?.trim()) return;
-    api.post(`/parent/questions/${threadId}/followup`, { content: text }).then(() => {
+    api.post(`/parent/questions/${threadId}/followup?parent_id=${DEMO_PARENT_ID}`, { content: text }).then(() => {
       setThreads(prev => prev.map(t =>
         t.id === threadId
           ? { ...t, status: "pending", messages: [...t.messages, { id: Date.now(), from: "parent", content: text, timestamp: "Just now" }] }
@@ -73,7 +74,7 @@ export function ParentQuestions() {
   const handleNewQuestion = () => {
     if (!newQuestion.subject.trim() || !newQuestion.content.trim() || !student) return;
     setSubmitting(true);
-    api.post<{ question_id: number; status: string }>(`/parent/questions/${student.id}`, newQuestion)
+    api.post<{ question_id: number; status: string }>(`/parent/questions/${student.id}?parent_id=${DEMO_PARENT_ID}`, newQuestion)
       .then((res) => {
         const newThread: Thread = {
           id: res.question_id,
@@ -274,7 +275,7 @@ export function ParentQuestions() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs" style={{ fontWeight: 600, color: "#1E293B" }}>
-                                {msg.from === "teacher" ? thread.teacher : "Sarah Williams (You)"}
+                                {msg.from === "teacher" ? thread.teacher : `${parent?.name} (You)`}
                               </span>
                               {idx === 0 && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F1F5F9", color: "#94A3B8" }}>Original question</span>

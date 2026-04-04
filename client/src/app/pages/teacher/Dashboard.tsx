@@ -8,6 +8,7 @@ import {
 } from "recharts";
 import { Link } from "react-router";
 import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 const gradeColors: Record<string, string> = {
   A: "#10B981", B: "#3B82F6", C: "#F59E0B", D: "#EF4444", E: "#DC2626"
@@ -32,7 +33,7 @@ export function TeacherDashboard() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    api.get<any>("/teacher/dashboard").then(setData);
+    api.get<any>(`/teacher/dashboard?teacher_id=${DEMO_TEACHER_ID}`).then(setData);
   }, []);
 
   const handleApprove = (id: number) => {

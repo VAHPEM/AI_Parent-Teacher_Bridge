@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { BookOpen, Calculator, FlaskConical, GraduationCap, Sparkles, CheckCircle, Star, Clock, Play, ChevronDown, ChevronUp } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
+import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
 
 const SUBJECT_COLORS: Record<string, { color: string; bg: string }> = {
@@ -46,7 +46,7 @@ interface Activity {
 }
 
 export function ParentActivities() {
-  const { activeChild: student } = useActiveChild();
+  const { activeChild: student } = useParentChild();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());

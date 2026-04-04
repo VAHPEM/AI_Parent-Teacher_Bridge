@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import {
   LayoutDashboard, TrendingUp, BookOpen, Settings,
   Bell, Menu, X, Sparkles, LogOut, Bot, HelpCircle
 } from "lucide-react";
 import { AIChatbot } from "../AIChatbot";
-import { ParentChildProvider, useActiveChild } from "../../context/ParentChildContext";
+import {DEMO_PARENT_ID} from "../../lib/config";
+import { ParentChildProvider, useParentChild } from "../../context/ParentChildContext";
+import { api } from "../../lib/api";
 
 interface NavItem {
   label: string;
@@ -26,16 +28,18 @@ interface ParentLayoutProps {
   children: React.ReactNode;
 }
 
+
 function ParentLayoutInner({ children }: ParentLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const { activeChild, children: allChildren, setActiveChildId } = useActiveChild();
+  const { activeChild, children: allChildren, setActiveChildId, parent } = useParentChild();
+
   const isActive = (path: string) => {
     if (path === "/parent") return location.pathname === "/parent";
     return location.pathname.startsWith(path);
   };
-
+  
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#F8FAFC", fontFamily: "Inter, sans-serif" }}>
       {sidebarOpen && (
@@ -105,7 +109,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
               SW
             </div>
             <div>
-              <p className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>Sarah Williams</p>
+              <p className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>{parent?.name}</p>
               <p className="text-xs" style={{ color: "#64748B" }}>Parent / Guardian</p>
             </div>
           </div>

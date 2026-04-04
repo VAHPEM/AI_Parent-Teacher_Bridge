@@ -4,7 +4,7 @@ import {
   TrendingUp, TrendingDown, Minus, BookOpen, MessageSquare,
   ArrowRight, Bell, Sparkles, Calendar
 } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
+import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
 
 const gradeConfig: Record<string, { color: string; bg: string; label: string; border: string }> = {
@@ -31,7 +31,7 @@ interface DashboardData {
 }
 
 export function ParentDashboard() {
-  const { activeChild: student } = useActiveChild();
+  const { activeChild: student } = useParentChild();
   const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {

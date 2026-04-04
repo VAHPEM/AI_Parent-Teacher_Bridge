@@ -5,6 +5,7 @@ import {
   Lightbulb, Bot, RotateCcw, X, Bell
 } from "lucide-react";
 import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 type FilterType = "urgent" | "pending" | "answered" | "all";
 
@@ -79,14 +80,14 @@ export function FlaggedQuestions() {
   const handleSendAI = (id: number) => {
     const q = questions.find(q => q.id === id);
     if (!q) return;
-    api.post(`/teacher/flagged-questions/${id}/respond`, { response: q.aiSuggestedResponse, method: "ai" }).then(() => {
+    api.post(`/teacher/flagged-questions/${id}/respond?teacher_id=${DEMO_TEACHER_ID}`, { response: q.aiSuggestedResponse, method: "ai" }).then(() => {
       updateState(id, { status: "answered", showEditor: false });
     });
   };
 
   const handleSendEdited = (id: number) => {
     const state = questionStates[id];
-    api.post(`/teacher/flagged-questions/${id}/respond`, { response: state.editedResponse, method: "edited_ai" }).then(() => {
+    api.post(`/teacher/flagged-questions/${id}/respond?teacher_id=${DEMO_TEACHER_ID}`, { response: state.editedResponse, method: "edited_ai" }).then(() => {
       updateState(id, { status: "answered", showEditor: false });
     });
   };

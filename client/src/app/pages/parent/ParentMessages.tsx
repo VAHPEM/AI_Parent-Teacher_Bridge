@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Mail, Clock, CheckCircle, Sparkles, ChevronDown, Bot, AlertCircle } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
+import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
+import { DEMO_PARENT_ID } from "../../lib/config";
 
 type View = "teacher" | "ai";
 
@@ -26,7 +27,7 @@ type TeacherProfile = {
 };
 
 export function ParentMessages() {
-  const { activeChild: student } = useActiveChild();
+  const { activeChild: student } = useParentChild();
   const [view, setView] = useState<View>("teacher");
   const [selectedTeacherId, setSelectedTeacherId] = useState(-1);
   const [teacherData, setTeacherData] = useState<TeacherProfile[]>([]);
@@ -45,7 +46,7 @@ export function ParentMessages() {
 
   useEffect(() => {
     if (!student) return;
-    api.get<any[]>(`/parent/messages/${student.id}`).then(data => {
+    api.get<any[]>(`/parent/messages/${student.id}?parent_id=${DEMO_PARENT_ID}`).then(data => {
       const mapped = data.map((t, idx) => ({
         id: t.teacherId,
         name: t.teacherName,
@@ -82,7 +83,7 @@ export function ParentMessages() {
   const handleSendToTeacher = () => {
     if (!newMessage.trim() || !student || !selectedTeacher) return;
     setSending(true);
-    api.post(`/parent/messages/${student.id}`, { teacherId: selectedTeacherId, text: newMessage })
+    api.post(`/parent/messages/${student.id}?parent_id=${DEMO_PARENT_ID}`, { teacherId: selectedTeacherId, text: newMessage })
       .then(() => {
         const msg = { id: Date.now(), from: "parent", content: newMessage, timestamp: "Just now", status: "sent" };
         setTeacherData(prev => prev.map(t => t.id === selectedTeacherId ? { ...t, messages: [...t.messages, msg] } : t));
