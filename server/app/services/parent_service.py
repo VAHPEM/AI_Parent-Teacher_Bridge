@@ -14,8 +14,6 @@ from app.models.parent_question import ParentQuestion
 from app.models.question_reply import QuestionReply
 from app.exceptions.app_exception import AppException
 
-DEMO_PARENT_ID = 4
-
 COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#EC4899", "#14B8A6", "#F97316"]
 
 LEVEL_MAP = {
@@ -76,12 +74,23 @@ class ParentService:
 
     # ── Children ──────────────────────────────────────────────────────
     @staticmethod
-    def get_children(db: Session) -> list:
+    def get_parent_info(db: Session, parent_id: int) -> dict:
+        parent = db.query(Parent).filter(Parent.id == parent_id).first()
+        if not parent:
+            raise AppException("Parent not found", 404)
+        return {
+            "id": parent.id,
+            "name": parent.name,
+            "initials": _initials(parent.name),
+            "color": _color(parent.id),
+        }
+    @staticmethod
+    def get_children(db: Session, parent_id: int) -> list:
         rows = (
             db.query(Student, Class, Teacher)
             .join(Class, Student.class_id == Class.id)
             .join(Teacher, Class.teacher_id == Teacher.id)
-            .filter(Student.parent_id == DEMO_PARENT_ID)
+            .filter(Student.parent_id == parent_id)
             .all()
         )
         result = []
@@ -320,7 +329,7 @@ class ParentService:
 
     # ── Messages (backed by parent_questions + replies) ───────────────
     @staticmethod
-    def get_messages(db: Session, student_id: int) -> list:
+    def get_messages(db: Session, student_id: int, parent_id: int) -> list:
         teachers = ParentService.get_teachers(db, student_id)
         result = []
         for t in teachers:
@@ -328,7 +337,7 @@ class ParentService:
                 db.query(ParentQuestion)
                 .filter(
                     ParentQuestion.student_id == student_id,
-                    ParentQuestion.parent_id == DEMO_PARENT_ID,
+                    ParentQuestion.parent_id == parent_id,
                 )
                 .order_by(ParentQuestion.created_at)
                 .all()
@@ -338,7 +347,7 @@ class ParentService:
                 messages.append({
                     "id":         f"q-{q.id}",
                     "from_type":  "parent",
-                    "from_id":    DEMO_PARENT_ID,
+                    "from_id":    parent_id,
                     "text":       q.content,
                     "created_at": str(q.created_at),
                 })
@@ -364,10 +373,9 @@ class ParentService:
         return result
 
     @staticmethod
-    def send_message(db: Session, student_id: int, teacher_id: int, text: str) -> dict:
-        # Create a question (open-priority) so teacher can see it
+    def send_message(db: Session, student_id: int, teacher_id: int, text: str, parent_id: int) -> dict:
         q = ParentQuestion(
-            parent_id=DEMO_PARENT_ID,
+            parent_id=parent_id,
             student_id=student_id,
             content=text,
             priority="yellow",
@@ -379,12 +387,12 @@ class ParentService:
 
     # ── Questions ─────────────────────────────────────────────────────
     @staticmethod
-    def get_questions(db: Session, student_id: int) -> list:
+    def get_questions(db: Session, student_id: int, parent_id: int) -> list:
         questions = (
             db.query(ParentQuestion)
             .filter(
                 ParentQuestion.student_id == student_id,
-                ParentQuestion.parent_id == DEMO_PARENT_ID,
+                ParentQuestion.parent_id == parent_id,
             )
             .order_by(desc(ParentQuestion.created_at))
             .all()
@@ -424,7 +432,7 @@ class ParentService:
         return result
 
     @staticmethod
-    def create_question(db: Session, student_id: int, subject: str, content: str, priority: str) -> dict:
+    def create_question(db: Session, student_id: int, subject: str, content: str, priority: str, parent_id: int) -> dict:
         # Look up or create subject by name
         subject_id = None
         if subject:
@@ -436,7 +444,7 @@ class ParentService:
             subject_id = subj.id
 
         q = ParentQuestion(
-            parent_id=DEMO_PARENT_ID,
+            parent_id=parent_id,
             student_id=student_id,
             subject_id=subject_id,
             content=content,
@@ -449,14 +457,14 @@ class ParentService:
         return {"question_id": q.id, "status": q.status}
 
     @staticmethod
-    def add_followup(db: Session, question_id: int, content: str) -> dict:
+    def add_followup(db: Session, question_id: int, content: str, parent_id: int) -> dict:
         q = db.query(ParentQuestion).filter(ParentQuestion.id == question_id).first()
         if not q:
             raise AppException("Question not found", 404)
         reply = QuestionReply(
             question_id=question_id,
             from_role="parent",
-            from_id=DEMO_PARENT_ID,
+            from_id=parent_id,
             content=content,
         )
         db.add(reply)
@@ -466,8 +474,8 @@ class ParentService:
 
     # ── Settings ──────────────────────────────────────────────────────
     @staticmethod
-    def get_settings(db: Session) -> dict:
-        parent = db.query(Parent).filter(Parent.id == DEMO_PARENT_ID).first()
+    def get_settings(db: Session, parent_id: int) -> dict:
+        parent = db.query(Parent).filter(Parent.id == parent_id).first()
         if not parent:
             raise AppException("Parent not found", 404)
         return {
@@ -478,8 +486,8 @@ class ParentService:
         }
 
     @staticmethod
-    def update_settings(db: Session, language: str | None, notifications: dict | None) -> dict:
-        parent = db.query(Parent).filter(Parent.id == DEMO_PARENT_ID).first()
+    def update_settings(db: Session, language: str | None, notifications: dict | None, parent_id: int) -> dict:
+        parent = db.query(Parent).filter(Parent.id == parent_id).first()
         if not parent:
             raise AppException("Parent not found", 404)
         if language:

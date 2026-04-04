@@ -14,8 +14,6 @@ from app.models.canvas_sync_log import CanvasSyncLog
 from app.exceptions.app_exception import AppException
 from datetime import datetime
 
-DEMO_TEACHER_ID = 1
-
 # Palette used to derive avatar colour from student/parent id
 COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#EC4899", "#14B8A6", "#F97316"]
 
@@ -59,9 +57,9 @@ class TeacherService:
 
     # ── Dashboard ─────────────────────────────────────────────────────
     @staticmethod
-    def get_dashboard(db: Session) -> dict:
-        teacher = db.query(Teacher).filter(Teacher.id == DEMO_TEACHER_ID).first()
-        cls = db.query(Class).filter(Class.teacher_id == DEMO_TEACHER_ID).first()
+    def get_dashboard(db: Session, teacher_id: int) -> dict:
+        teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+        cls = db.query(Class).filter(Class.teacher_id == teacher_id).first()
 
         total_students = db.query(Student).count()
         pending_reviews = db.query(AIReport).filter(AIReport.status.in_(["pending", "draft"])).count()
@@ -342,7 +340,7 @@ class TeacherService:
         return [TeacherService._format_question_flat(q, p, s, db) for q, p, s in rows]
 
     @staticmethod
-    def respond_to_question(db: Session, question_id: int, response: str, method: str) -> dict:
+    def respond_to_question(db: Session, question_id: int, response: str, method: str, teacher_id: int) -> dict:
         q = db.query(ParentQuestion).filter(ParentQuestion.id == question_id).first()
         if not q:
             raise AppException("Question not found", 404)
@@ -350,7 +348,7 @@ class TeacherService:
         reply = QuestionReply(
             question_id=question_id,
             from_role="teacher",
-            from_id=DEMO_TEACHER_ID,
+            from_id=teacher_id,
             content=response,
         )
         db.add(reply)
@@ -368,8 +366,8 @@ class TeacherService:
 
     # ── Reports (backed by ai_reports) ────────────────────────────────
     @staticmethod
-    def get_reports(db: Session) -> dict:
-        cls = db.query(Class).filter(Class.teacher_id == DEMO_TEACHER_ID).first()
+    def get_reports(db: Session, teacher_id: int) -> dict:
+        cls = db.query(Class).filter(Class.teacher_id == teacher_id).first()
         student_ids = [
             s.id for s in db.query(Student).filter(Student.class_id == cls.id).all()
         ] if cls else []

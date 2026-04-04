@@ -9,8 +9,8 @@ router = APIRouter(prefix="/teacher", tags=["Teacher"])
 
 
 @router.get("/dashboard")
-def get_dashboard(db: Session = Depends(get_db)):
-    data = TeacherService.get_dashboard(db)
+def get_dashboard(teacher_id: int = Query(...), db: Session = Depends(get_db)):
+    data = TeacherService.get_dashboard(db, teacher_id)
     return ApiResponse(body=data, message="success")
 
 
@@ -81,8 +81,8 @@ def get_flagged_questions(db: Session = Depends(get_db)):
 
 
 @router.post("/flagged-questions/{question_id}/respond")
-def respond_to_question(question_id: int, payload: RespondCreate, db: Session = Depends(get_db)):
-    data = TeacherService.respond_to_question(db, question_id, payload.response, payload.method)
+def respond_to_question(question_id: int, payload: RespondCreate, teacher_id: int = Query(...), db: Session = Depends(get_db)):
+    data = TeacherService.respond_to_question(db, question_id, payload.response, payload.method, teacher_id)
     return ApiResponse(body=data, message="success")
 
 
@@ -93,8 +93,8 @@ def schedule_call(question_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/reports")
-def get_reports(db: Session = Depends(get_db)):
-    data = TeacherService.get_reports(db)
+def get_reports(teacher_id: int = Query(...), db: Session = Depends(get_db)):
+    data = TeacherService.get_reports(db, teacher_id)
     return ApiResponse(body=data, message="success")
 
 

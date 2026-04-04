@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.dto.api_response import ApiResponse
@@ -7,10 +7,14 @@ from app.schemas.parent import MessageCreate, ChatRequest, QuestionCreate, Follo
 
 router = APIRouter(prefix="/parent", tags=["Parent"])
 
+@router.get("/info/{parent_id}")
+def get_parent_info(parent_id: int, db: Session = Depends(get_db)):
+    data = ParentService.get_parent_info(db, parent_id)
+    return ApiResponse(body=data, message="success")
 
 @router.get("/children")
-def get_children(db: Session = Depends(get_db)):
-    data = ParentService.get_children(db)
+def get_children(parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_children(db, parent_id)
     return ApiResponse(body=data, message="success")
 
 
@@ -45,14 +49,14 @@ def get_teachers(student_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/messages/{student_id}")
-def get_messages(student_id: int, db: Session = Depends(get_db)):
-    data = ParentService.get_messages(db, student_id)
+def get_messages(student_id: int, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_messages(db, student_id, parent_id)
     return ApiResponse(body=data, message="success")
 
 
 @router.post("/messages/{student_id}")
-def send_message(student_id: int, payload: MessageCreate, db: Session = Depends(get_db)):
-    data = ParentService.send_message(db, student_id, payload.teacherId, payload.text)
+def send_message(student_id: int, payload: MessageCreate, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.send_message(db, student_id, payload.teacherId, payload.text, parent_id)
     return ApiResponse(body=data, message="success")
 
 
@@ -63,30 +67,30 @@ def parent_chat(student_id: int, payload: ChatRequest, db: Session = Depends(get
 
 
 @router.get("/questions/{student_id}")
-def get_questions(student_id: int, db: Session = Depends(get_db)):
-    data = ParentService.get_questions(db, student_id)
+def get_questions(student_id: int, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_questions(db, student_id, parent_id)
     return ApiResponse(body=data, message="success")
 
 
 @router.post("/questions/{student_id}")
-def create_question(student_id: int, payload: QuestionCreate, db: Session = Depends(get_db)):
-    data = ParentService.create_question(db, student_id, payload.subject, payload.content, payload.priority)
+def create_question(student_id: int, payload: QuestionCreate, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.create_question(db, student_id, payload.subject, payload.content, payload.priority, parent_id)
     return ApiResponse(body=data, message="success")
 
 
 @router.post("/questions/{question_id}/followup")
-def add_followup(question_id: int, payload: FollowUpCreate, db: Session = Depends(get_db)):
-    data = ParentService.add_followup(db, question_id, payload.content)
+def add_followup(question_id: int, payload: FollowUpCreate, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.add_followup(db, question_id, payload.content, parent_id)
     return ApiResponse(body=data, message="success")
 
 
 @router.get("/settings")
-def get_settings(db: Session = Depends(get_db)):
-    data = ParentService.get_settings(db)
+def get_settings(parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_settings(db, parent_id)
     return ApiResponse(body=data, message="success")
 
 
 @router.put("/settings")
-def update_settings(payload: SettingsUpdate, db: Session = Depends(get_db)):
-    data = ParentService.update_settings(db, payload.preferred_language, payload.notifications)
+def update_settings(payload: SettingsUpdate, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.update_settings(db, payload.preferred_language, payload.notifications, parent_id)
     return ApiResponse(body=data, message="success")
