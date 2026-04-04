@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, Clock, CheckCircle, ChevronDown, ChevronUp, Plus, X, Shield, BookOpen, Lightbulb, MessageSquare } from "lucide-react";
-import { parentQuestionThreads } from "../../data/mockData";
-import { useActiveChild } from "../../context/ParentChildContext";
+import {useParentChild } from "../../context/ParentChildContext";
+import { api } from "../../lib/api";
+import { DEMO_PARENT_ID } from "../../lib/config";
 
 const priorityConfig: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
   red: { label: "Wellbeing / Safety", color: "#EF4444", bg: "#FEF2F2", border: "#FECACA", icon: <Shield size={12} /> },
@@ -9,52 +10,93 @@ const priorityConfig: Record<string, { label: string; color: string; bg: string;
   yellow: { label: "General", color: "#92400E", bg: "#FEFCE8", border: "#FEF08A", icon: <Lightbulb size={12} /> },
 };
 
-type Thread = typeof parentQuestionThreads[0] & {
-  messages: Array<{ id: number; from: string; content: string; timestamp: string }>;
+type Thread = {
+  id: number;
+  subject: string;
+  teacher: string;
+  teacherInitials: string;
+  teacherColor: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+  messages: Array<{ id: number | string; from: string; content: string; timestamp: string }>;
 };
 
 export function ParentQuestions() {
-  const { activeChild: student } = useActiveChild();
-  const [threads, setThreads] = useState<Thread[]>(parentQuestionThreads as Thread[]);
-  const [expandedId, setExpandedId] = useState<number | null>(1);
+  const { activeChild: student , parent} = useParentChild();
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [followUps, setFollowUps] = useState<Record<number, string>>({});
   const [showNewForm, setShowNewForm] = useState(false);
   const [newQuestion, setNewQuestion] = useState({ subject: "", content: "", priority: "orange" });
   const [submitting, setSubmitting] = useState(false);
 
-  const handleFollowUp = (threadId: number) => {
-    const text = followUps[threadId];
-    if (!text?.trim()) return;
-    setThreads(prev => prev.map(t =>
-      t.id === threadId
-        ? { ...t, status: "pending", messages: [...t.messages, { id: t.messages.length + 1, from: "parent", content: text, timestamp: "Just now" }] }
-        : t
-    ));
-    setFollowUps(prev => ({ ...prev, [threadId]: "" }));
-  };
-
-  const handleNewQuestion = () => {
-    if (!newQuestion.subject.trim() || !newQuestion.content.trim()) return;
-    setSubmitting(true);
-    setTimeout(() => {
-      const newThread: Thread = {
-        id: threads.length + 1,
-        subject: newQuestion.subject,
+  useEffect(() => {
+    if (!student) return;
+    api.get<any[]>(`/parent/questions/${student.id}?parent_id=${DEMO_PARENT_ID}`).then((data) => {
+      const mapped = data.map((q) => ({
+        id: q.id,
+        subject: q.subject,
         teacher: "Ms. Jennifer Thompson",
         teacherInitials: "MT",
         teacherColor: "#2563EB",
-        status: "pending",
-        priority: newQuestion.priority,
-        createdAt: "Just now",
-        messages: [{ id: 1, from: "parent", content: newQuestion.content, timestamp: "Just now" }],
-      };
-      setThreads(prev => [newThread, ...prev]);
-      setNewQuestion({ subject: "", content: "", priority: "orange" });
-      setShowNewForm(false);
-      setSubmitting(false);
-      setExpandedId(newThread.id);
-    }, 600);
+        status: q.status === "answered" ? "answered" : "pending",
+        priority: q.priority,
+        createdAt: new Date(q.createdAt).toLocaleDateString(),
+        messages: [
+          { id: `q-${q.id}`, from: "parent", content: q.content, timestamp: new Date(q.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) },
+          ...q.replies.map((r: any) => ({
+            id: r.id,
+            from: r.from_type === "parent" ? "parent" : "teacher",
+            content: r.content,
+            timestamp: new Date(r.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+          })),
+        ],
+      }));
+      setThreads(mapped);
+      if (mapped.length > 0) setExpandedId(mapped[0].id);
+    });
+  }, [student?.id]);
+
+  const handleFollowUp = (threadId: number) => {
+    const text = followUps[threadId];
+    if (!text?.trim()) return;
+    api.post(`/parent/questions/${threadId}/followup?parent_id=${DEMO_PARENT_ID}`, { content: text }).then(() => {
+      setThreads(prev => prev.map(t =>
+        t.id === threadId
+          ? { ...t, status: "pending", messages: [...t.messages, { id: Date.now(), from: "parent", content: text, timestamp: "Just now" }] }
+          : t
+      ));
+      setFollowUps(prev => ({ ...prev, [threadId]: "" }));
+    });
   };
+
+  const handleNewQuestion = () => {
+    if (!newQuestion.subject.trim() || !newQuestion.content.trim() || !student) return;
+    setSubmitting(true);
+    api.post<{ question_id: number; status: string }>(`/parent/questions/${student.id}?parent_id=${DEMO_PARENT_ID}`, newQuestion)
+      .then((res) => {
+        const newThread: Thread = {
+          id: res.question_id,
+          subject: newQuestion.subject,
+          teacher: "Ms. Jennifer Thompson",
+          teacherInitials: "MT",
+          teacherColor: "#2563EB",
+          status: "pending",
+          priority: newQuestion.priority,
+          createdAt: "Just now",
+          messages: [{ id: `q-${res.question_id}`, from: "parent", content: newQuestion.content, timestamp: "Just now" }],
+        };
+        setThreads(prev => [newThread, ...prev]);
+        setNewQuestion({ subject: "", content: "", priority: "orange" });
+        setShowNewForm(false);
+        setSubmitting(false);
+        setExpandedId(newThread.id);
+      })
+      .catch(() => setSubmitting(false));
+  };
+
+  if (!student) return null;
 
   return (
     <>
@@ -160,7 +202,7 @@ export function ParentQuestions() {
         {/* Threads list */}
         <div className="space-y-3">
           {threads.map(thread => {
-            const priority = priorityConfig[thread.priority];
+            const priority = priorityConfig[thread.priority] ?? priorityConfig.yellow;
             const isExpanded = expandedId === thread.id;
             const lastMsg = thread.messages[thread.messages.length - 1];
 
@@ -233,7 +275,7 @@ export function ParentQuestions() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs" style={{ fontWeight: 600, color: "#1E293B" }}>
-                                {msg.from === "teacher" ? thread.teacher : "Sarah Williams (You)"}
+                                {msg.from === "teacher" ? thread.teacher : `${parent?.name} (You)`}
                               </span>
                               {idx === 0 && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F1F5F9", color: "#94A3B8" }}>Original question</span>

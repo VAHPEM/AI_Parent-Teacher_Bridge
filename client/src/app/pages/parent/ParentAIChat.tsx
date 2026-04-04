@@ -1,31 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, AlertCircle, Sparkles } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
-
-const aiResponses: Record<string, string> = {
-  default: "Hi! I'm the EduTrack AI assistant. I can help you with Noah's learning progress, suggest home activities, or explain assessment results. What would you like to know?",
-  grade: "Noah received a C+ in Mathematics this week (Week 8, Term 2). His score was 62% — an improvement from last week's C grade, particularly in basic operations. Keep encouraging him!",
-  math: "For Mathematics: Noah is at C+ (62%) in Week 8. I recommend: daily times tables practice (10 mins), the Khan Academy Kids app, and real-world maths like counting items at the supermarket.",
-  english: "For English: Noah received a C in Week 8. I recommend: reading together for 15 minutes each evening, practising retelling stories in his own words, and using vocabulary flashcards for new words.",
-  homework: "Based on Noah's current assessments, I recommend: 1) Daily times tables practice (10 mins), 2) Reading together for 15 minutes each evening, 3) Khan Academy Kids app for engaging maths practice.",
-  wellbeing: "I understand this is an important concern. For student wellbeing and safety matters, I'd recommend posting a question to Ms. Thompson directly in the 'Ask a Teacher' section so she can respond personally.",
-  bullying: "This needs to be handled directly by the teacher. Please use the 'Ask a Teacher' section to post this question to Ms. Thompson — she'll be notified immediately and can respond with full context.",
-  extension: "This question requires teacher assessment. Based on Noah's current grades (C/C+), I don't have enough data to make this recommendation. Try asking Ms. Thompson via 'Ask a Teacher'.",
-  science: "For Science: Noah received a B in Week 8 — great effort! I recommend: simple home experiments, watching science documentaries together, and keeping a science observation journal.",
-};
-
-function getAIResponse(input: string): string {
-  const lower = input.toLowerCase();
-  if (lower.includes("bullying") || lower.includes("bully") || lower.includes("mean")) return aiResponses.bullying;
-  if (lower.includes("wellbeing") || lower.includes("upset") || lower.includes("sad")) return aiResponses.wellbeing;
-  if (lower.includes("maths") || lower.includes("math") || lower.includes("multiplication") || lower.includes("number")) return aiResponses.math;
-  if (lower.includes("english") || lower.includes("reading") || lower.includes("writing") || lower.includes("comprehension")) return aiResponses.english;
-  if (lower.includes("science")) return aiResponses.science;
-  if (lower.includes("homework") || lower.includes("home") || lower.includes("activities") || lower.includes("practise")) return aiResponses.homework;
-  if (lower.includes("grade") || lower.includes("score") || lower.includes("result") || lower.includes("mark")) return aiResponses.grade;
-  if (lower.includes("extension") || lower.includes("gifted") || lower.includes("advanced")) return aiResponses.extension;
-  return "Thanks for your question! Based on Noah's learning data, I'd recommend continuing the daily reading and maths activities. If you have a specific question about a subject or assessment, I'm happy to help with more detail!";
-}
+import { useParentChild } from "../../context/ParentChildContext";
+import { api } from "../../lib/api";
 
 const suggestedQuestions = [
   "How is Noah going in Maths?",
@@ -42,9 +18,9 @@ interface Message {
 }
 
 export function ParentAIChat() {
-  const { activeChild: student } = useActiveChild();
+  const { activeChild: student } = useParentChild();
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, from: "ai", content: aiResponses.default, timestamp: "Just now" }
+    { id: 1, from: "ai", content: "Hi! I'm the EduTrack AI assistant. I can help you with your child's learning progress, suggest home activities, or explain assessment results. What would you like to know?", timestamp: "Just now" }
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -56,15 +32,21 @@ export function ParentAIChat() {
 
   const handleSend = (text?: string) => {
     const question = text || input;
-    if (!question.trim()) return;
+    if (!question.trim() || !student) return;
     setMessages(prev => [...prev, { id: prev.length + 1, from: "user", content: question, timestamp: "Just now" }]);
     setInput("");
     setTyping(true);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: getAIResponse(question), timestamp: "Just now" }]);
-      setTyping(false);
-    }, 1200);
+    api.post<{reply: string}>(`/parent/chat/${student.id}`, { message: question })
+      .then(res => {
+        setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: res.reply, timestamp: "Just now" }]);
+      })
+      .catch(() => {
+        setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: "Sorry, I encountered an error.", timestamp: "Just now" }]);
+      })
+      .finally(() => setTyping(false));
   };
+
+  if (!student) return null;
 
   return (
     <>

@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import {
   LayoutDashboard, TrendingUp, BookOpen, Settings,
   Bell, Menu, X, Sparkles, LogOut, Bot, HelpCircle
 } from "lucide-react";
 import { AIChatbot } from "../AIChatbot";
-import { ParentChildProvider, useActiveChild, children as allChildren } from "../../context/ParentChildContext";
+import {DEMO_PARENT_ID} from "../../lib/config";
+import { ParentChildProvider, useParentChild } from "../../context/ParentChildContext";
+import { api } from "../../lib/api";
 
 interface NavItem {
   label: string;
@@ -26,16 +28,18 @@ interface ParentLayoutProps {
   children: React.ReactNode;
 }
 
+
 function ParentLayoutInner({ children }: ParentLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const { activeChild, setActiveChildId } = useActiveChild();
+  const { activeChild, children: allChildren, setActiveChildId, parent } = useParentChild();
+
   const isActive = (path: string) => {
     if (path === "/parent") return location.pathname === "/parent";
     return location.pathname.startsWith(path);
   };
-
+  
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#F8FAFC", fontFamily: "Inter, sans-serif" }}>
       {sidebarOpen && (
@@ -67,12 +71,11 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
         <div className="border-b border-slate-100" style={{ backgroundColor: "#F0FDF4" }}>
           <p className="text-xs px-5 pt-3 pb-2" style={{ color: "#64748B", fontWeight: 500 }}>MY CHILDREN</p>
           {allChildren.map(child => {
-            const isActive = child.id === activeChild.id;
-            console.log("Rendering child:", child.name, "Active:", child.id, "ActiveChild:", isActive);
+            const isActive = child.id === activeChild?.id;
             return (
               <button
                 key={child.id}
-                onClick={() => { console.log(child.id); setActiveChildId(child.id); }}
+                onClick={() => setActiveChildId(child.id)}
                 className="w-full flex items-center gap-3 px-5 py-2.5 transition-colors text-left"
                 style={{ backgroundColor: isActive ? "#D1FAE5" : "transparent" }}
               >
@@ -86,7 +89,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
                   <p className="text-sm truncate" style={{ fontWeight: 600, color: isActive ? "#065F46" : "#1E293B" }}>
                     {child.name}
                   </p>
-                  <p className="text-xs" style={{ color: "#64748B" }}>Year {child.class} · {child.teacher}</p>
+                  <p className="text-xs" style={{ color: "#64748B" }}>{child.year} · {child.teacher}</p>
                 </div>
                 {isActive && (
                   <span className="text-xs px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#10B981", color: "white", fontWeight: 600 }}>
@@ -106,7 +109,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
               SW
             </div>
             <div>
-              <p className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>Sarah Williams</p>
+              <p className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>{parent?.name}</p>
               <p className="text-xs" style={{ color: "#64748B" }}>Parent / Guardian</p>
             </div>
           </div>
@@ -157,7 +160,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             <div className="hidden sm:block">
               <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>Greenwood Primary School</p>
               <p className="text-xs" style={{ color: "#64748B" }}>
-                Viewing: <span style={{ color: activeChild.color, fontWeight: 600 }}>{activeChild.name}</span> · Year {activeChild.class} · {activeChild.teacher}
+                Viewing: <span style={{ color: activeChild?.color, fontWeight: 600 }}>{activeChild?.name}</span> · {activeChild?.year} · {activeChild?.teacher}
               </p>
             </div>
           </div>
@@ -169,11 +172,11 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             <div className="flex items-center gap-2">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs cursor-pointer shrink-0"
-                style={{ backgroundColor: activeChild.color, fontWeight: 700 }}
+                style={{ backgroundColor: activeChild?.color ?? "#64748B", fontWeight: 700 }}
               >
-                {activeChild.initials}
+                {activeChild?.initials}
               </div>
-              <span className="text-sm hidden sm:block" style={{ fontWeight: 500, color: "#1E293B" }}>{activeChild.firstName}</span>
+              <span className="text-sm hidden sm:block" style={{ fontWeight: 500, color: "#1E293B" }}>{activeChild?.firstName}</span>
             </div>
           </div>
         </header>

@@ -1,27 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCcw, CheckCircle, AlertCircle, Clock, Database, Link, ArrowRight } from "lucide-react";
-
-const syncHistory = [
-  { id: 1, date: "Today, 10:32am", records: 168, status: "success", trigger: "Automatic" },
-  { id: 2, date: "Yesterday, 11:00pm", records: 168, status: "success", trigger: "Scheduled" },
-  { id: 3, date: "March 31, 11:00pm", records: 162, status: "success", trigger: "Scheduled" },
-  { id: 4, date: "March 30, 2:15pm", records: 168, status: "warning", trigger: "Manual" },
-  { id: 5, date: "March 29, 11:00pm", records: 168, status: "success", trigger: "Scheduled" },
-];
+import { api } from "../../lib/api";
 
 export function CanvasSync() {
   const [syncing, setSyncing] = useState(false);
   const [synced, setSynced] = useState(false);
+  const [status, setStatus] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get<any>("/teacher/canvas/status").then(setStatus);
+    api.get<any[]>("/teacher/canvas/history").then(setHistory);
+  }, []);
 
   const handleSync = () => {
     setSyncing(true);
     setSynced(false);
-    setTimeout(() => {
+    api.post("/teacher/canvas/sync", {}).then(() => {
+      api.get<any>("/teacher/canvas/status").then(setStatus);
+      api.get<any[]>("/teacher/canvas/history").then(setHistory);
       setSyncing(false);
       setSynced(true);
       setTimeout(() => setSynced(false), 4000);
-    }, 2500);
+    });
   };
+
+  if (!status) return <div>Loading...</div>;
 
   return (
     <>
@@ -40,14 +44,14 @@ export function CanvasSync() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p style={{ fontWeight: 600, color: "#1E293B" }}>Canvas LMS — Greenwood Primary</p>
+                  <p style={{ fontWeight: 600, color: "#1E293B" }}>Canvas LMS — {status.school}</p>
                   <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#D1FAE5", color: "#065F46", fontWeight: 500 }}>
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                     Connected
                   </span>
                 </div>
                 <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
-                  <Clock size={12} className="inline mr-1" />Last synced: Today at 10:32am AEST · {168} records
+                  <Clock size={12} className="inline mr-1" />Last synced: {status.lastSyncAt || "Never"} · {status.recordCount} records
                 </p>
               </div>
             </div>
@@ -65,16 +69,16 @@ export function CanvasSync() {
           {synced && (
             <div className="mt-4 p-3 rounded-xl flex items-center gap-2" style={{ backgroundColor: "#D1FAE5" }}>
               <CheckCircle size={16} style={{ color: "#10B981" }} />
-              <p className="text-sm" style={{ color: "#065F46", fontWeight: 500 }}>Sync complete! 168 student records updated successfully.</p>
+              <p className="text-sm" style={{ color: "#065F46", fontWeight: 500 }}>Sync complete! {status.recordCount} student records updated successfully.</p>
             </div>
           )}
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mt-6">
             {[
-              { label: "Students Synced", value: "84", color: "#2563EB" },
-              { label: "Grades Updated", value: "168", color: "#10B981" },
-              { label: "Sync Frequency", value: "Daily", color: "#F59E0B" },
+              { label: "Students Synced", value: status.stats.studentsSynced, color: "#2563EB" },
+              { label: "Grades Updated", value: status.stats.gradesUpdated, color: "#10B981" },
+              { label: "Sync Frequency", value: status.stats.frequency, color: "#F59E0B" },
             ].map(s => (
               <div key={s.label} className="p-4 rounded-xl text-center" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
                 <p style={{ fontWeight: 700, color: s.color, fontSize: "1.5rem" }}>{s.value}</p>
@@ -90,7 +94,7 @@ export function CanvasSync() {
             <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Sync History</h2>
           </div>
           <div className="divide-y divide-slate-100">
-            {syncHistory.map(entry => (
+            {history.map((entry: any) => (
               <div key={entry.id} className="px-5 py-3.5 flex items-center gap-4">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                   style={{ backgroundColor: entry.status === "success" ? "#D1FAE5" : "#FEF3C7" }}>

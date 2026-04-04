@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users, Clock, MessageCircleQuestion, Bot,
   TrendingUp, TrendingDown, Minus, CheckCircle, XCircle, Edit3, ArrowRight, AlertCircle
@@ -7,26 +7,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar
 } from "recharts";
 import { Link } from "react-router";
-import { performanceChartData, aiAnalysisData, parentQuestionsData } from "../../data/mockData";
-
-const statCards = [
-  {
-    label: "Total Students", value: "28", icon: <Users size={20} />,
-    iconBg: "#EFF6FF", iconColor: "#2563EB", trend: null, sub: "Year 5A Class"
-  },
-  {
-    label: "Pending Reviews", value: "5", icon: <Clock size={20} />,
-    iconBg: "#FEF3C7", iconColor: "#F59E0B", trend: "up", sub: "Needs attention"
-  },
-  {
-    label: "AI Handled Questions", value: "85%", icon: <Bot size={20} />,
-    iconBg: "#D1FAE5", iconColor: "#10B981", trend: "up", sub: "This term"
-  },
-  {
-    label: "Flagged Questions", value: "3", icon: <MessageCircleQuestion size={20} />,
-    iconBg: "#FEE2E2", iconColor: "#EF4444", trend: null, sub: "Needs your input"
-  },
-];
+import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 const gradeColors: Record<string, string> = {
   A: "#10B981", B: "#3B82F6", C: "#F59E0B", D: "#EF4444", E: "#DC2626"
@@ -34,6 +16,8 @@ const gradeColors: Record<string, string> = {
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   pending: { label: "Needs Review", color: "#F59E0B", bg: "#FEF3C7" },
+  draft: { label: "Draft", color: "#64748B", bg: "#F1F5F9" },
+  published: { label: "Published", color: "#10B981", bg: "#D1FAE5" },
   approved: { label: "Approved", color: "#10B981", bg: "#D1FAE5" },
   auto_approved: { label: "Auto-Approved", color: "#10B981", bg: "#D1FAE5" },
   needs_revision: { label: "Needs Revision", color: "#EF4444", bg: "#FEE2E2" },
@@ -46,17 +30,52 @@ const priorityConfig: Record<string, { label: string; color: string; bg: string;
 };
 
 export function TeacherDashboard() {
-  const [approvals, setApprovals] = useState(aiAnalysisData);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    api.get<any>(`/teacher/dashboard?teacher_id=${DEMO_TEACHER_ID}`).then(setData);
+  }, []);
 
   const handleApprove = (id: number) => {
-    setApprovals(prev => prev.map(a => a.id === id ? { ...a, status: "approved" } : a));
+    api.put(`/teacher/ai-analysis/${id}/approve`).then(() => {
+      setData((prev: any) => ({
+        ...prev,
+        recentAnalysis: prev.recentAnalysis.map((a: any) => a.id === id ? { ...a, status: "approved" } : a)
+      }));
+    });
   };
 
   const handleReject = (id: number) => {
-    setApprovals(prev => prev.map(a => a.id === id ? { ...a, status: "needs_revision" } : a));
+    api.put(`/teacher/ai-analysis/${id}/revise`).then(() => {
+      setData((prev: any) => ({
+        ...prev,
+        recentAnalysis: prev.recentAnalysis.map((a: any) => a.id === id ? { ...a, status: "needs_revision" } : a)
+      }));
+    });
   };
 
-  const pending = approvals.filter(a => a.status === "pending");
+  if (!data) return <div>Loading...</div>;
+
+  const pending = data.recentAnalysis.filter((a: any) => a.status === "pending");
+
+  const statCards = [
+    {
+      label: "Total Students", value: data.stats.totalStudents, icon: <Users size={20} />,
+      iconBg: "#EFF6FF", iconColor: "#2563EB", trend: null, sub: "Year 5A Class"
+    },
+    {
+      label: "Pending Reviews", value: data.stats.pendingReviews, icon: <Clock size={20} />,
+      iconBg: "#FEF3C7", iconColor: "#F59E0B", trend: "up", sub: "Needs attention"
+    },
+    {
+      label: "AI Handled Questions", value: `${data.stats.aiHandled}%`, icon: <Bot size={20} />,
+      iconBg: "#D1FAE5", iconColor: "#10B981", trend: "up", sub: "This term"
+    },
+    {
+      label: "Flagged Questions", value: data.stats.flagged, icon: <MessageCircleQuestion size={20} />,
+      iconBg: "#FEE2E2", iconColor: "#EF4444", trend: null, sub: "Needs your input"
+    },
+  ];
 
   return (
     <>
@@ -116,7 +135,7 @@ export function TeacherDashboard() {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={performanceChartData} barSize={28} barGap={4}>
+              <BarChart data={data.performance} barSize={28} barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                 <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
@@ -190,8 +209,8 @@ export function TeacherDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {approvals.slice(0, 5).map((item, i) => {
-                  const st = statusConfig[item.status];
+                {data.recentAnalysis.slice(0, 5).map((item: any, i: number) => {
+                  const st = statusConfig[item.status] ?? statusConfig.pending;
                   return (
                     <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">
@@ -213,7 +232,7 @@ export function TeacherDashboard() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {item.weakAreas.slice(0, 2).map(area => (
+                          {item.weakAreas.slice(0, 2).map((area: string) => (
                             <span key={area} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FEF3C7", color: "#D97706" }}>
                               {area}
                             </span>
@@ -280,8 +299,8 @@ export function TeacherDashboard() {
             </Link>
           </div>
           <div className="divide-y divide-slate-100">
-            {parentQuestionsData.slice(0, 3).map((q) => {
-              const p = priorityConfig[q.priority];
+            {data.flaggedQuestions.slice(0, 3).map((q: any) => {
+              const p = priorityConfig[q.priority] ?? priorityConfig.yellow;
               return (
                 <div key={q.id} className="px-6 py-4 flex items-start gap-4">
                   <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: p.dot }}></div>

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCcw, Save, Send, Info, CheckCircle, Search, X } from "lucide-react";
-import { gradeEntryData } from "../../data/mockData";
+import { api } from "../../lib/api";
 
 const subjects = ["English", "Mathematics", "Science", "HASS", "Health & PE"];
 const classes = ["Year 5A", "Year 5B", "Year 6A", "Year 6B"];
@@ -22,9 +22,9 @@ const gradeColors: Record<string, { bg: string; color: string }> = {
 
 interface StudentEntry {
   id: number;
+  student_id: number;
   name: string;
-  avatar: string;
-  avatarColor: string;
+  initials: string;
   grade: string;
   score: number;
   participation: string;
@@ -40,8 +40,24 @@ export function GradeEntry() {
   const [savedDraft, setSavedDraft] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const [entries, setEntries] = useState<StudentEntry[]>(gradeEntryData);
+  const [entries, setEntries] = useState<StudentEntry[]>([]);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const classId = 1;
+    const weekNum = parseInt(selectedWeek.replace(/\D/g, "")) || 8;
+    api.get<any[]>(`/teacher/grade-entry?class_id=${classId}&week=${weekNum}&subject=${activeSubject}&term=Term%202`)
+      .then(data => {
+        setEntries(data.map((d: any) => ({
+          ...d,
+          grade: d.grade || "C",
+          score: d.score || 0,
+          participation: d.participation || "Satisfactory",
+          comment: d.comment || "",
+          concerns: d.concerns || []
+        })));
+      });
+  }, [selectedClass, selectedWeek, activeSubject]);
 
   const updateEntry = (id: number, field: keyof StudentEntry, value: string | number | string[]) => {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
@@ -59,13 +75,35 @@ export function GradeEntry() {
   };
 
   const handleSaveDraft = () => {
-    setSavedDraft(true);
-    setTimeout(() => setSavedDraft(false), 3000);
+    const classId = 1;
+    const weekNum = parseInt(selectedWeek.replace(/\D/g, "")) || 8;
+    const payload = {
+      class_id: classId,
+      week: weekNum,
+      term: "Term 2",
+      subject: activeSubject,
+      entries: entries
+    };
+    api.post("/teacher/grade-entry/draft", payload).then(() => {
+      setSavedDraft(true);
+      setTimeout(() => setSavedDraft(false), 3000);
+    });
   };
 
   const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
+    const classId = 1;
+    const weekNum = parseInt(selectedWeek.replace(/\D/g, "")) || 8;
+    const payload = {
+      class_id: classId,
+      week: weekNum,
+      term: "Term 2",
+      subject: activeSubject,
+      entries: entries
+    };
+    api.post("/teacher/grade-entry/submit", payload).then(() => {
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 4000);
+    });
   };
 
   return (
@@ -182,8 +220,8 @@ export function GradeEntry() {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs shrink-0"
-                          style={{ backgroundColor: entry.avatarColor, fontWeight: 600 }}>
-                          {entry.avatar}
+                          style={{ backgroundColor: "#2563EB", fontWeight: 600 }}>
+                          {entry.initials}
                         </div>
                         <span className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>{entry.name}</span>
                       </div>

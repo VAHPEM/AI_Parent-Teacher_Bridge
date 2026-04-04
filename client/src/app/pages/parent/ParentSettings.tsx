@@ -1,7 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Globe, User, Save, Shield, Lock } from "lucide-react";
+import { api } from "../../lib/api";
+import { DEMO_PARENT_ID } from "../../lib/config";
+import { useParentChild } from "../../context/ParentChildContext";
 
 const languages = ["English", "Simplified Chinese (普通话)", "Arabic (العربية)", "Vietnamese (Tiếng Việt)", "Hindi (हिन्दी)", "Korean (한국어)"];
+
+interface SettingsData {
+  preferred_language: string;
+  notifications: {
+    newReport: boolean;
+    teacherReply: boolean;
+    weeklyDigest: boolean;
+    aiActivities: boolean;
+  };
+}
 
 export function ParentSettings() {
   const [saved, setSaved] = useState(false);
@@ -9,14 +22,30 @@ export function ParentSettings() {
   const [notifications, setNotifications] = useState({
     newReport: true, teacherReply: true, weeklyDigest: false, aiActivities: true
   });
+  const [loading, setLoading] = useState(true);
+  const{parent}= useParentChild();
+
+  useEffect(() => {
+    api.get<SettingsData>(`/parent/settings?parent_id=${DEMO_PARENT_ID}`)
+      .then(data => {
+        if (data.preferred_language) setLanguage(data.preferred_language);
+        if (data.notifications) setNotifications(data.notifications);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const toggle = (key: string) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   };
 
   const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    api.put(`/parent/settings?parent_id=${DEMO_PARENT_ID}`, { preferred_language: language, notifications })
+      .then(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      })
+      .catch((err) => console.error(err));
   };
 
   const ToggleSwitch = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
@@ -50,14 +79,14 @@ export function ParentSettings() {
                 SW
               </div>
               <div>
-                <p style={{ fontWeight: 600, color: "#1E293B" }}>Sarah Williams</p>
+                <p style={{ fontWeight: 600, color: "#1E293B" }}>{parent?.name}</p>
                 <p className="text-sm" style={{ color: "#64748B" }}>Parent / Guardian of Noah Williams</p>
                 <p className="text-xs" style={{ color: "#94A3B8" }}>s.williams@email.com.au</p>
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               {[
-                { label: "Full Name", value: "Sarah Williams" },
+                { label: "Full Name", value: parent?.name },
                 { label: "Email", value: "s.williams@email.com.au" },
                 { label: "Phone", value: "0412 345 678" },
                 { label: "Relationship", value: "Parent / Guardian" },

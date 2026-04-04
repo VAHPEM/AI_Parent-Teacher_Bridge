@@ -1,34 +1,50 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
-  TrendingUp, TrendingDown, Minus, BookOpen, Award, MessageSquare,
-  ArrowRight, CheckCircle, AlertCircle, Clock, Bell, Sparkles, Calendar
+  TrendingUp, TrendingDown, Minus, BookOpen, MessageSquare,
+  ArrowRight, Bell, Sparkles, Calendar
 } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
+import { useParentChild } from "../../context/ParentChildContext";
+import { api } from "../../lib/api";
 
 const gradeConfig: Record<string, { color: string; bg: string; label: string; border: string }> = {
-  "A": { color: "#10B981", bg: "#D1FAE5", label: "Above Expected", border: "#A7F3D0" },
-  "B": { color: "#2563EB", bg: "#DBEAFE", label: "Above Expected", border: "#93C5FD" },
+  "A":  { color: "#10B981", bg: "#D1FAE5", label: "Above Expected", border: "#A7F3D0" },
+  "B":  { color: "#2563EB", bg: "#DBEAFE", label: "Above Expected", border: "#93C5FD" },
   "B+": { color: "#2563EB", bg: "#DBEAFE", label: "Above Expected", border: "#93C5FD" },
-  "C+": { color: "#F59E0B", bg: "#FEF3C7", label: "At Expected", border: "#FDE68A" },
-  "C": { color: "#F59E0B", bg: "#FEF3C7", label: "At Expected", border: "#FDE68A" },
-  "D": { color: "#EF4444", bg: "#FEE2E2", label: "Below Expected", border: "#FECACA" },
+  "C+": { color: "#F59E0B", bg: "#FEF3C7", label: "At Expected",    border: "#FDE68A" },
+  "C":  { color: "#F59E0B", bg: "#FEF3C7", label: "At Expected",    border: "#FDE68A" },
+  "D":  { color: "#EF4444", bg: "#FEE2E2", label: "Below Expected", border: "#FECACA" },
 };
 
-const recentActivity = [
-  { type: "report", text: "Week 8 Mathematics report added", time: "2 hours ago", icon: <BookOpen size={14} />, color: "#2563EB", bg: "#EFF6FF" },
-  { type: "message", text: "Ms. Thompson replied to your question", time: "Yesterday", icon: <MessageSquare size={14} />, color: "#10B981", bg: "#ECFDF5" },
-  { type: "alert", text: "New English assessment available to review", time: "Yesterday", icon: <Bell size={14} />, color: "#F59E0B", bg: "#FEF3C7" },
-  { type: "ai", text: "AI generated new home learning activities", time: "2 days ago", icon: <Sparkles size={14} />, color: "#8B5CF6", bg: "#EDE9FE" },
-];
+const activityMeta: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+  report:  { icon: <BookOpen size={14} />,    color: "#2563EB", bg: "#EFF6FF" },
+  message: { icon: <MessageSquare size={14} />, color: "#10B981", bg: "#ECFDF5" },
+  alert:   { icon: <Bell size={14} />,         color: "#F59E0B", bg: "#FEF3C7" },
+  ai:      { icon: <Sparkles size={14} />,     color: "#8B5CF6", bg: "#EDE9FE" },
+};
 
-const upcomingEvents = [
-  { title: "Parent-Teacher Conference", date: "April 10, 2026", type: "meeting" },
-  { title: "Science Fair", date: "April 15, 2026", type: "event" },
-  { title: "Term 2 Reports Released", date: "April 22, 2026", type: "report" },
-];
+interface DashboardData {
+  recentReports: { subject: string; grade: string; trend: string; comment: string; aiRecommendations: string[]; week: string }[];
+  recentActivity: { type: string; text: string; time: string }[];
+  upcomingEvents: { title: string; date: string; type: string }[];
+  aiInsight: string;
+}
 
 export function ParentDashboard() {
-  const { activeChild: student } = useActiveChild();
+  const { activeChild: student } = useParentChild();
+  const [data, setData] = useState<DashboardData | null>(null);
+
+  useEffect(() => {
+    if (!student) return;
+    api.get<DashboardData>(`/parent/dashboard/${student.id}`).then(setData);
+  }, [student?.id]);
+
+  if (!student || !data) return (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-sm" style={{ color: "#94A3B8" }}>Loading...</p>
+    </div>
+  );
+
   return (
     <>
       <div className="p-6 max-w-6xl mx-auto">
@@ -62,7 +78,7 @@ export function ParentDashboard() {
             </div>
             <div className="flex-1 min-w-0">
               <p style={{ fontWeight: 700, color: "#1E293B", fontSize: "1.1rem" }}>{student.name}</p>
-              <p className="text-sm" style={{ color: "#64748B" }}>{student.year} · Class {student.class} · {student.teacher}</p>
+              <p className="text-sm" style={{ color: "#64748B" }}>{student.year} · Class {student.class_name} · {student.teacher}</p>
               <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{student.school}</p>
             </div>
             <div className="flex gap-4 flex-wrap">
@@ -75,7 +91,7 @@ export function ParentDashboard() {
                 <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>Attendance</p>
               </div>
               <div className="text-center">
-                <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#2563EB" }}>{student.recentReports.length}</p>
+                <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#2563EB" }}>{data.recentReports.length}</p>
                 <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>Subjects</p>
               </div>
             </div>
@@ -86,9 +102,7 @@ export function ParentDashboard() {
             <Sparkles size={14} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
             <p className="text-sm" style={{ color: "#1E40AF" }}>
               <span style={{ fontWeight: 600 }}>AI Insight:</span>{" "}
-              {student.id === 1
-                ? "Noah is showing positive improvement in Mathematics this week (+1 grade level). His English reading comprehension could benefit from 15 minutes of daily reading practice at home."
-                : "Ella is performing above expected across all subjects this term. Her HASS project received an A — outstanding work! Continue encouraging her love of reading and creative writing."}
+              {data.aiInsight}
             </p>
           </div>
         </div>
@@ -103,7 +117,7 @@ export function ParentDashboard() {
               </Link>
             </div>
             <div className="space-y-4">
-              {student.recentReports.map((report) => {
+              {data.recentReports.map((report) => {
                 const gc = gradeConfig[report.grade] || { color: "#94A3B8", bg: "#F1F5F9", label: "Unknown", border: "#E2E8F0" };
                 return (
                   <div key={report.subject} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
@@ -156,17 +170,20 @@ export function ParentDashboard() {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
               <h2 className="mb-4" style={{ fontWeight: 600, color: "#1E293B" }}>Recent Activity</h2>
               <div className="space-y-3">
-                {recentActivity.map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: item.bg }}>
-                      <span style={{ color: item.color }}>{item.icon}</span>
+                {data.recentActivity.map((item, i) => {
+                  const meta = activityMeta[item.type] ?? activityMeta.ai;
+                  return (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: meta.bg }}>
+                        <span style={{ color: meta.color }}>{meta.icon}</span>
+                      </div>
+                      <div>
+                        <p className="text-xs" style={{ color: "#1E293B", fontWeight: 500, lineHeight: "1.4" }}>{item.text}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{item.time}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs" style={{ color: "#1E293B", fontWeight: 500, lineHeight: "1.4" }}>{item.text}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{item.time}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -177,7 +194,7 @@ export function ParentDashboard() {
                 <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Upcoming</h2>
               </div>
               <div className="space-y-3">
-                {upcomingEvents.map((event, i) => (
+                {data.upcomingEvents.map((event, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: i === 0 ? "#2563EB" : "#94A3B8" }}></div>
                     <div>
