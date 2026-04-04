@@ -1,28 +1,70 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, BookOpen, CheckCircle, AlertCircle, Sparkles, Info } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
 import { useActiveChild } from "../../context/ParentChildContext";
-
+import { api } from "../../lib/api";
 
 const gradeConfig: Record<string, { color: string; bg: string; border: string }> = {
-  "A": { color: "#10B981", bg: "#D1FAE5", border: "#A7F3D0" },
+  "A":  { color: "#10B981", bg: "#D1FAE5", border: "#A7F3D0" },
   "B+": { color: "#2563EB", bg: "#DBEAFE", border: "#93C5FD" },
-  "B": { color: "#2563EB", bg: "#DBEAFE", border: "#93C5FD" },
+  "B":  { color: "#2563EB", bg: "#DBEAFE", border: "#93C5FD" },
   "C+": { color: "#F59E0B", bg: "#FEF3C7", border: "#FDE68A" },
-  "C": { color: "#F59E0B", bg: "#FEF3C7", border: "#FDE68A" },
-  "D": { color: "#EF4444", bg: "#FEE2E2", border: "#FECACA" },
+  "C":  { color: "#F59E0B", bg: "#FEF3C7", border: "#FDE68A" },
+  "D":  { color: "#EF4444", bg: "#FEE2E2", border: "#FECACA" },
 };
+
+const SUBJECT_COLORS: Record<string, { color: string; bg: string }> = {
+  "English":     { color: "#2563EB", bg: "#EFF6FF" },
+  "Mathematics": { color: "#10B981", bg: "#ECFDF5" },
+  "Science":     { color: "#8B5CF6", bg: "#EDE9FE" },
+  "HASS":        { color: "#F59E0B", bg: "#FEF3C7" },
+  "Health & PE": { color: "#EF4444", bg: "#FEE2E2" },
+};
+
+interface Subject {
+  name: string; grade: string; score: number; trend: string;
+  level: string; levelColor: string; levelBg: string;
+  curriculumRef: string; teacherComment: string;
+  weakAreas: string[]; strengths: string[]; aiRecs: string[];
+  classAverage: number;
+}
 
 export function ParentProgress() {
   const { activeChild } = useActiveChild();
-  const subjects = activeChild.subjects;
-  const progressHistory = activeChild.progressHistory;
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [progressHistory, setProgressHistory] = useState<Record<string, unknown>[]>([]);
   const [activeSubjectMap, setActiveSubjectMap] = useState<Record<number, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeChild) return;
+    setIsLoading(true);
+    api.get<{ subjects: Subject[]; progressHistory: Record<string, unknown>[] }>(
+      `/parent/progress/${activeChild.id}`
+    ).then(d => {
+      setSubjects(d.subjects);
+      setProgressHistory(d.progressHistory);
+    }).finally(() => setIsLoading(false));
+  }, [activeChild?.id]);
+
+  if (!activeChild || isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-sm" style={{ color: "#94A3B8" }}>Loading...</p>
+    </div>
+  );
+
+  if (subjects.length === 0) return (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-sm" style={{ color: "#94A3B8" }}>No progress data available yet.</p>
+    </div>
+  );
+
   const activeSubject = activeSubjectMap[activeChild.id] || subjects[0].name;
   const setActiveSubject = (name: string) => setActiveSubjectMap(prev => ({ ...prev, [activeChild.id]: name }));
   const active = subjects.find(s => s.name === activeSubject) || subjects[0];
+  const sc = SUBJECT_COLORS[active.name] ?? { color: "#64748B", bg: "#F1F5F9" };
   const gc = gradeConfig[active.grade] || { color: "#94A3B8", bg: "#F1F5F9", border: "#E2E8F0" };
 
   return (
@@ -30,7 +72,7 @@ export function ParentProgress() {
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>{activeChild.firstName}'s Progress & Grades</h1>
-          <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Term 2, Week 8 · Greenwood Primary School · Year {activeChild.class}</p>
+          <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Term 2, Week 8 · Greenwood Primary School · {activeChild.year}</p>
         </div>
 
         {/* Progress chart */}
@@ -67,7 +109,7 @@ export function ParentProgress() {
               onClick={() => setActiveSubject(sub.name)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap transition-all"
               style={{
-                backgroundColor: activeSubject === sub.name ? sub.color : "white",
+                backgroundColor: activeSubject === sub.name ? (SUBJECT_COLORS[sub.name]?.color ?? "#64748B") : "white",
                 color: activeSubject === sub.name ? "white" : "#64748B",
                 border: activeSubject === sub.name ? "none" : "1px solid #E2E8F0",
                 fontWeight: activeSubject === sub.name ? 600 : 400
@@ -94,8 +136,8 @@ export function ParentProgress() {
             <div className="bg-white rounded-2xl border shadow-sm p-5" style={{ borderColor: gc.border }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: active.bg }}>
-                    <BookOpen size={18} style={{ color: active.color }} />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: sc.bg }}>
+                    <BookOpen size={18} style={{ color: sc.color }} />
                   </div>
                   <div>
                     <p style={{ fontWeight: 700, color: "#1E293B" }}>{active.name}</p>
@@ -129,7 +171,7 @@ export function ParentProgress() {
                 </div>
                 <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${active.score}%`, backgroundColor: active.color }} />
+                    style={{ width: `${active.score}%`, backgroundColor: sc.color }} />
                 </div>
               </div>
             </div>
@@ -148,7 +190,7 @@ export function ParentProgress() {
                 <Info size={14} style={{ color: "#2563EB" }} />
                 <p className="text-xs" style={{ fontWeight: 600, color: "#2563EB" }}>AUSTRALIAN CURRICULUM STANDARD</p>
               </div>
-              <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{active.achievement}</p>
+              <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{active.curriculumRef}</p>
             </div>
 
             {/* Strengths & weak areas */}
@@ -192,7 +234,7 @@ export function ParentProgress() {
               <div className="space-y-3 mb-5">
                 {active.aiRecs.map((rec, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs text-white" style={{ backgroundColor: active.color, fontWeight: 700 }}>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs text-white" style={{ backgroundColor: sc.color, fontWeight: 700 }}>
                       {i + 1}
                     </div>
                     <p className="text-sm" style={{ color: "#374151", lineHeight: "1.5" }}>{rec}</p>

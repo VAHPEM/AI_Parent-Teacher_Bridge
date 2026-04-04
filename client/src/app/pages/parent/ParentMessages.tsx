@@ -1,32 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Mail, Clock, CheckCircle, Sparkles, ChevronDown, Bot, AlertCircle } from "lucide-react";
-import { parentTeachers } from "../../data/mockData";
 import { useActiveChild } from "../../context/ParentChildContext";
+import { api } from "../../lib/api";
 
 type View = "teacher" | "ai";
-
-const aiResponses: Record<string, string> = {
-  default: "Hi! I'm the EduTrack AI assistant. I can help you with Noah's learning progress, suggest home activities, or explain assessment results. What would you like to know?",
-  grade: "Noah received a C+ in Mathematics this week (Week 8, Term 2). His score was 62% — an improvement from last week's C grade, particularly in basic operations. Keep encouraging him!",
-  math: "For Mathematics: Noah is at C+ (62%) in Week 8. I recommend: daily times tables practice (10 mins), the Khan Academy Kids app, and real-world maths like counting items at the supermarket.",
-  english: "For English: Noah received a C in Week 8. I recommend: reading together for 15 minutes each evening, practising retelling stories in his own words, and using vocabulary flashcards for new words.",
-  homework: "Based on Noah's current assessments, I recommend: 1) Daily times tables practice (10 mins), 2) Reading together for 15 minutes each evening, 3) Khan Academy Kids app for engaging maths practice. These align with his identified learning areas.",
-  wellbeing: "I understand this is an important concern. For student wellbeing and safety matters, I've flagged this question for Ms. Thompson to respond to directly. If urgent, please contact the school on (03) 9555 0100.",
-  bullying: "This needs to be handled directly by the teacher. I've sent a notification to Ms. Thompson about your concern. She will be in touch within 24 hours. If urgent, please call (03) 9555 0100.",
-  extension: "This question requires teacher assessment. Based on Noah's current grades (C/C+), I don't have enough data to make this recommendation. Ms. Thompson is best placed to evaluate — I've flagged your question for her review.",
-};
-
-function getAIResponse(input: string): string {
-  const lower = input.toLowerCase();
-  if (lower.includes("bullying") || lower.includes("bully") || lower.includes("mean")) return aiResponses.bullying;
-  if (lower.includes("wellbeing") || lower.includes("upset") || lower.includes("school")) return aiResponses.wellbeing;
-  if (lower.includes("maths") || lower.includes("math") || lower.includes("multiplication") || lower.includes("number")) return aiResponses.math;
-  if (lower.includes("english") || lower.includes("reading") || lower.includes("writing")) return aiResponses.english;
-  if (lower.includes("homework") || lower.includes("home") || lower.includes("activities") || lower.includes("practise")) return aiResponses.homework;
-  if (lower.includes("grade") || lower.includes("score") || lower.includes("result") || lower.includes("mark")) return aiResponses.grade;
-  if (lower.includes("extension") || lower.includes("gifted") || lower.includes("advanced")) return aiResponses.extension;
-  return "Thanks for your question! Based on Noah's learning data, I'd recommend continuing the daily reading and maths activities. If you have a specific question about a subject or assessment, I'm happy to help with more detail!";
-}
 
 const quickQuestions = [
   "How is Noah going in Maths?",
@@ -35,25 +12,64 @@ const quickQuestions = [
   "Should Noah be in extension classes?",
 ];
 
+type TeacherProfile = {
+  id: number;
+  name: string;
+  initials: string;
+  subject: string;
+  email: string;
+  consultHours: string;
+  responseTime: string;
+  color: string;
+  unread: number;
+  messages: Array<{ id: number | string; from: string; content: string; timestamp: string; status: string }>;
+};
+
 export function ParentMessages() {
   const { activeChild: student } = useActiveChild();
   const [view, setView] = useState<View>("teacher");
-  const [selectedTeacherId, setSelectedTeacherId] = useState(1);
-  const [teacherData, setTeacherData] = useState(parentTeachers);
+  const [selectedTeacherId, setSelectedTeacherId] = useState(-1);
+  const [teacherData, setTeacherData] = useState<TeacherProfile[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
 
   const [aiMessages, setAiMessages] = useState([
-    { id: 1, from: "ai", content: aiResponses.default, timestamp: "Just now" }
+    { id: 1, from: "ai", content: "Hi! I'm the EduTrack AI assistant. I can help you with your child's learning progress, suggest home activities, or explain assessment results. What would you like to know?", timestamp: "Just now" }
   ]);
   const [aiInput, setAiInput] = useState("");
   const [aiTyping, setAiTyping] = useState(false);
   const aiBottomRef = useRef<HTMLDivElement>(null);
   const teacherBottomRef = useRef<HTMLDivElement>(null);
 
-  const selectedTeacher = teacherData.find(t => t.id === selectedTeacherId)!;
+  useEffect(() => {
+    if (!student) return;
+    api.get<any[]>(`/parent/messages/${student.id}`).then(data => {
+      const mapped = data.map((t, idx) => ({
+        id: t.teacherId,
+        name: t.teacherName,
+        initials: t.teacherName.split(" ").map((n: string) => n[0]).join("").toUpperCase(),
+        subject: "Class Teacher",
+        email: "contact@school.edu.au",
+        consultHours: "Mon-Fri 3:30pm - 4:30pm",
+        responseTime: "Usually responds within 24h",
+        color: ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B"][idx % 4],
+        unread: 0,
+        messages: t.messages.map((m: any) => ({
+          id: m.id,
+          from: m.from_type,
+          content: m.text,
+          timestamp: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+          status: "read",
+        })),
+      }));
+      setTeacherData(mapped);
+      if (mapped.length > 0 && selectedTeacherId === -1) setSelectedTeacherId(mapped[0].id);
+    });
+  }, [student?.id]);
+
+  const selectedTeacher = teacherData.find(t => t.id === selectedTeacherId);
 
   useEffect(() => {
     aiBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -64,29 +80,36 @@ export function ParentMessages() {
   }, [selectedTeacherId, teacherData]);
 
   const handleSendToTeacher = () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !student || !selectedTeacher) return;
     setSending(true);
-    const msg = { id: selectedTeacher.messages.length + 1, from: "parent", content: newMessage, timestamp: "Just now", status: "sent" };
-    setTimeout(() => {
-      setTeacherData(prev => prev.map(t => t.id === selectedTeacherId ? { ...t, messages: [...t.messages, msg] } : t));
-      setSending(false);
-      setSent(true);
-      setNewMessage("");
-      setTimeout(() => setSent(false), 3000);
-    }, 800);
+    api.post(`/parent/messages/${student.id}`, { teacherId: selectedTeacherId, text: newMessage })
+      .then(() => {
+        const msg = { id: Date.now(), from: "parent", content: newMessage, timestamp: "Just now", status: "sent" };
+        setTeacherData(prev => prev.map(t => t.id === selectedTeacherId ? { ...t, messages: [...t.messages, msg] } : t));
+        setSent(true);
+        setNewMessage("");
+        setTimeout(() => setSent(false), 3000);
+      })
+      .finally(() => setSending(false));
   };
 
   const handleSendToAI = () => {
-    if (!aiInput.trim()) return;
+    if (!aiInput.trim() || !student) return;
     const question = aiInput;
     setAiMessages(prev => [...prev, { id: prev.length + 1, from: "user", content: question, timestamp: "Just now" }]);
     setAiInput("");
     setAiTyping(true);
-    setTimeout(() => {
-      setAiMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: getAIResponse(question), timestamp: "Just now" }]);
-      setAiTyping(false);
-    }, 1200);
+    api.post<{reply: string}>(`/parent/chat/${student.id}`, { message: question })
+      .then(res => {
+        setAiMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: res.reply, timestamp: "Just now" }]);
+      })
+      .catch(() => {
+        setAiMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: "Sorry, I encountered an error.", timestamp: "Just now" }]);
+      })
+      .finally(() => setAiTyping(false));
   };
+
+  if (!student) return null;
 
   return (
     <>
@@ -262,7 +285,7 @@ export function ParentMessages() {
                 </div>
               </div>
             </>
-          ) : (
+          ) : selectedTeacher ? (
             <>
               {/* Teacher header */}
               <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center justify-between gap-4 shrink-0">
@@ -273,7 +296,7 @@ export function ParentMessages() {
                   <div>
                     <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>{selectedTeacher.name}</p>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs" style={{ color: "#64748B" }}>{selectedTeacher.subject} · {selectedTeacher.year}</p>
+                      <p className="text-xs" style={{ color: "#64748B" }}>{selectedTeacher.subject} · {student.year}</p>
                       <div className="flex items-center gap-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
                         <span className="text-xs" style={{ color: "#64748B" }}>{selectedTeacher.responseTime}</span>
@@ -398,6 +421,10 @@ export function ParentMessages() {
                 </div>
               </div>
             </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm" style={{ color: "#94A3B8" }}>Select a teacher to view messages</p>
+            </div>
           )}
         </div>
       </div>

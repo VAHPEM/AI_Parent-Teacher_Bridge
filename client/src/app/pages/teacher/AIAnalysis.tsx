@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CheckCircle, Edit3, XCircle, Clock, Globe, BrainCircuit,
   BookOpen, Home, ChevronDown, ChevronUp, Sparkles, AlertTriangle, Info, Zap
 } from "lucide-react";
-import { aiAnalysisData } from "../../data/mockData";
+import { api } from "../../lib/api";
 
 type FilterType = "all" | "auto_approved" | "needs_review" | "needs_revision";
 
@@ -16,7 +16,10 @@ const filterTabs: { key: FilterType; label: string }[] = [
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
   auto_approved: { label: "Auto-Approved", color: "#10B981", bg: "#F0FDF4", border: "#86EFAC" },
-  pending: { label: "Needs Review", color: "#F59E0B", bg: "#FFFBEB", border: "#FDE68A" },
+  approved:      { label: "Approved",      color: "#10B981", bg: "#F0FDF4", border: "#86EFAC" },
+  published:     { label: "Published",     color: "#10B981", bg: "#F0FDF4", border: "#86EFAC" },
+  pending:       { label: "Needs Review",  color: "#F59E0B", bg: "#FFFBEB", border: "#FDE68A" },
+  draft:         { label: "Draft",         color: "#64748B", bg: "#F8FAFC", border: "#E2E8F0" },
   needs_revision: { label: "Needs Revision", color: "#EF4444", bg: "#FFF5F5", border: "#FECACA" },
 };
 
@@ -28,9 +31,13 @@ const confidenceConfig: Record<string, { color: string; bg: string; icon: React.
 
 export function AIAnalysis() {
   const [filter, setFilter] = useState<FilterType>("all");
-  const [analyses, setAnalyses] = useState(aiAnalysisData);
+  const [analyses, setAnalyses] = useState<any[]>([]);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [showTranslation, setShowTranslation] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    api.get<any[]>("/teacher/ai-analysis").then((data) => setAnalyses(data));
+  }, []);
 
   const toggleExpand = (id: number) => {
     setExpandedCards(prev => {
@@ -49,11 +56,15 @@ export function AIAnalysis() {
   };
 
   const handleApprove = (id: number) => {
-    setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "auto_approved" } : a));
+    api.put(`/teacher/ai-analysis/${id}/approve`).then(() => {
+      setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "auto_approved" } : a));
+    });
   };
 
   const handleRequestRevision = (id: number) => {
-    setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "needs_revision" } : a));
+    api.put(`/teacher/ai-analysis/${id}/revise`).then(() => {
+      setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "needs_revision" } : a));
+    });
   };
 
   const getFilterKey = (status: string): FilterType => {
@@ -139,7 +150,7 @@ export function AIAnalysis() {
         {/* Cards grid */}
         <div className="grid lg:grid-cols-2 gap-5">
           {filtered.map(analysis => {
-            const status = statusConfig[analysis.status];
+            const status = statusConfig[analysis.status] ?? statusConfig.pending;
             const confidence = confidenceConfig[analysis.confidence];
             const isExpanded = expandedCards.has(analysis.id);
             const showTrans = showTranslation.has(analysis.id);
@@ -193,7 +204,7 @@ export function AIAnalysis() {
                     <span className="text-xs" style={{ fontWeight: 600, color: "#2563EB", letterSpacing: "0.05em" }}>AI ANALYSIS</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {analysis.weakAreas.map(area => (
+                    {analysis.weakAreas.map((area: string) => (
                       <span key={area} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: "#FEF3C7", color: "#D97706", fontWeight: 500 }}>
                         ⚠ {area}
                       </span>
@@ -213,7 +224,7 @@ export function AIAnalysis() {
                       <span className="text-xs" style={{ fontWeight: 600, color: "#10B981", letterSpacing: "0.05em" }}>RECOMMENDATIONS FOR PARENTS</span>
                     </div>
                     <ul className="space-y-1">
-                      {analysis.recommendations.slice(0, isExpanded ? undefined : 2).map((rec, i) => (
+                      {analysis.recommendations.slice(0, isExpanded ? undefined : 2).map((rec: string, i: number) => (
                         <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "#64748B" }}>
                           <CheckCircle size={12} className="shrink-0 mt-0.5" style={{ color: "#10B981" }} />
                           {rec}

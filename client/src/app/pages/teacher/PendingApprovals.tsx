@@ -1,23 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle, XCircle, Clock, AlertTriangle, Sparkles, Info } from "lucide-react";
-import { aiAnalysisData } from "../../data/mockData";
+import { api } from "../../lib/api";
 
 export function PendingApprovals() {
-  const [items, setItems] = useState(
-    aiAnalysisData.filter(a => a.status === "pending" && a.confidence === "low")
-  );
+  const [items, setItems] = useState<any[]>([]);
   const [approving, setApproving] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Fetch specifically the low confidence ones or all and filter locally
+    api.get<any[]>("/teacher/ai-analysis?confidence=low").then((data) => {
+      setItems(data.filter(a => a.status === "pending"));
+    });
+  }, []);
 
   const handleApprove = (id: number) => {
     setApproving(id);
-    setTimeout(() => {
+    api.put(`/teacher/ai-analysis/${id}/approve`).then(() => {
       setItems(prev => prev.filter(a => a.id !== id));
       setApproving(null);
-    }, 800);
+    });
   };
 
   const handleRequestRevision = (id: number) => {
-    setItems(prev => prev.filter(a => a.id !== id));
+    api.put(`/teacher/ai-analysis/${id}/revise`).then(() => {
+      setItems(prev => prev.filter(a => a.id !== id));
+    });
   };
 
   return (
@@ -102,7 +109,7 @@ export function PendingApprovals() {
                   <div className="p-3 rounded-xl" style={{ backgroundColor: "#FEF3C7" }}>
                     <p className="text-xs mb-1" style={{ fontWeight: 600, color: "#92400E" }}>Weak Areas Identified</p>
                     <div className="flex flex-wrap gap-1">
-                      {item.weakAreas.slice(0, 3).map(a => (
+                      {item.weakAreas.slice(0, 3).map((a: string) => (
                         <span key={a} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "white", color: "#92400E" }}>{a}</span>
                       ))}
                     </div>

@@ -1,7 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Globe, User, Save, Shield, Lock } from "lucide-react";
+import { api } from "../../lib/api";
 
 const languages = ["English", "Simplified Chinese (普通话)", "Arabic (العربية)", "Vietnamese (Tiếng Việt)", "Hindi (हिन्दी)", "Korean (한국어)"];
+
+interface SettingsData {
+  preferred_language: string;
+  notifications: {
+    newReport: boolean;
+    teacherReply: boolean;
+    weeklyDigest: boolean;
+    aiActivities: boolean;
+  };
+}
 
 export function ParentSettings() {
   const [saved, setSaved] = useState(false);
@@ -9,14 +20,29 @@ export function ParentSettings() {
   const [notifications, setNotifications] = useState({
     newReport: true, teacherReply: true, weeklyDigest: false, aiActivities: true
   });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get<SettingsData>("/parent/settings")
+      .then(data => {
+        if (data.preferred_language) setLanguage(data.preferred_language);
+        if (data.notifications) setNotifications(data.notifications);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const toggle = (key: string) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   };
 
   const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    api.put("/parent/settings", { preferred_language: language, notifications })
+      .then(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      })
+      .catch((err) => console.error(err));
   };
 
   const ToggleSwitch = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
