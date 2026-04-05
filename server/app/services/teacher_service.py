@@ -309,6 +309,12 @@ class TeacherService:
         if q.subject_id:
             subj = db.query(Subject).filter(Subject.id == q.subject_id).first()
             subject_name = subj.subject_name if subj else None
+        replies = (
+            db.query(QuestionReply)
+            .filter(QuestionReply.question_id == q.id)
+            .order_by(QuestionReply.created_at)
+            .all()
+        )
         return {
             "id":                   q.id,
             "avatar":               _initials(parent.name),
@@ -326,6 +332,15 @@ class TeacherService:
             "flagIcon":             "🚩",
             "timestamp":            _time_ago(q.created_at),
             "createdAt":            str(q.created_at),
+            "replies": [
+                {
+                    "id":         r.id,
+                    "from_role":  r.from_role,
+                    "content":    r.content,
+                    "createdAt":  str(r.created_at),
+                }
+                for r in replies
+            ],
         }
 
     @staticmethod
