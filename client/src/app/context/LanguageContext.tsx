@@ -13,26 +13,34 @@ export const SUPPORTED_LANGUAGES = [
 interface LanguageContextType {
   language: string;
   setLanguage: (lang: string) => void;
+  isChangingLanguage: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
   language: "en",
   setLanguage: () => {},
+  isChangingLanguage: false,
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLangState] = useState(i18n.language ?? "en");
+  const [isChangingLanguage, setIsChangingLanguage] = useState(false);
 
   const setLanguage = useCallback((lang: string) => {
+    setIsChangingLanguage(true);
     i18n.changeLanguage(lang);
-    setLangState(lang);
-    // Auto-save the selected language directly to the backend
+    // Wait for DB to update first, THEN set language state to trigger page refetches
     api.put(`/parent/settings?parent_id=${DEMO_PARENT_ID}`, { preferred_language: lang })
-      .catch(err => console.error("Failed to auto-sync language to backend:", err));
+      .then(() => setLangState(lang))
+      .catch(err => {
+        console.error("Failed to auto-sync language to backend:", err);
+        setLangState(lang);
+      })
+      .finally(() => setIsChangingLanguage(false));
   }, []);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage }}>
+    <LanguageContext.Provider value={{ language, setLanguage, isChangingLanguage }}>
       {children}
     </LanguageContext.Provider>
   );

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 import {
   LayoutDashboard, TrendingUp, BookOpen, Settings,
-  Bell, Menu, X, Sparkles, LogOut, Bot, HelpCircle, Globe
+  Bell, Menu, X, Sparkles, LogOut, Bot, HelpCircle, Globe, Loader2
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AIChatbot } from "../AIChatbot";
@@ -21,7 +21,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const { activeChild, children: allChildren, setActiveChildId, parent } = useParentChild();
   const { t } = useTranslation(["layout", "common"]);
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, isChangingLanguage } = useLanguage();
 
   const navItems = useMemo(() => [
     { label: t("nav.home", { ns: "layout" }), icon: <LayoutDashboard size={18} />, path: "/parent" },
@@ -216,7 +216,15 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto relative">
+          {isChangingLanguage && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(248,250,252,0.85)", backdropFilter: "blur(2px)" }}>
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 size={28} className="animate-spin" style={{ color: "#10B981" }} />
+                <p className="text-sm font-medium" style={{ color: "#64748B" }}>Translating...</p>
+              </div>
+            </div>
+          )}
           {children}
         </main>
       </div>

@@ -36,6 +36,7 @@ interface Subject {
 export function ParentProgress() {
   const { activeChild } = useParentChild();
   const { t } = useTranslation("progress");
+  const { language } = useLanguage();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [progressHistory, setProgressHistory] = useState<Record<string, unknown>[]>([]);
   const [activeSubjectMap, setActiveSubjectMap] = useState<Record<number, string>>({});
@@ -50,7 +51,7 @@ export function ParentProgress() {
       setSubjects(d.subjects);
       setProgressHistory(d.progressHistory);
     }).finally(() => setIsLoading(false));
-  }, [activeChild?.id]);
+  }, [activeChild?.id, language]);
 
   if (!activeChild || isLoading) return (
     <div className="flex items-center justify-center h-64">
