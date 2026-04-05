@@ -137,25 +137,31 @@ def save_ai_report(report: dict[str, Any]) -> int:
                 INSERT INTO ai_reports (
                     student_id,
                     week_number,
+                    term,
                     summary,
                     strengths,
                     support_areas,
-                    parent_actions,
+                    recommendations,
                     risk_level,
+                    confidence,
+                    status,
                     teacher_approved,
                     sent_to_parent
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
                     report["student_id"],
                     report["week_number"],
-                    report["parent_summary"],
+                    report.get("term"),
+                    report["summary"],
                     Json(report["strengths"]),
                     Json(report["support_areas"]),
-                    Json(report["parent_actions"]),
+                    Json(report["recommendations"]),
                     report["risk_level"],
+                    report.get("confidence", "medium"),
+                    report.get("status", "draft"),
                     False,
                     False,
                 ),
@@ -163,6 +169,49 @@ def save_ai_report(report: dict[str, Any]) -> int:
             report_id = cur.fetchone()[0]
         conn.commit()
         return report_id
+    finally:
+        conn.close()
+
+
+def save_activities(activities: list[dict[str, Any]]) -> None:
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            for activity in activities:
+                cur.execute(
+                    """
+                    INSERT INTO activities (
+                        student_id,
+                        subject_id,
+                        title,
+                        type,
+                        duration,
+                        difficulty,
+                        description,
+                        steps,
+                        ai_generated,
+                        reference,
+                        confidence,
+                        completed
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        activity["student_id"],
+                        activity.get("subject_id"),
+                        activity["title"],
+                        activity.get("type"),
+                        activity.get("duration"),
+                        activity.get("difficulty"),
+                        activity.get("description"),
+                        Json(activity.get("steps", [])),
+                        activity.get("ai_generated", True),
+                        activity.get("reference"),
+                        activity.get("confidence", "medium"),
+                        False,
+                    ),
+                )
+        conn.commit()
     finally:
         conn.close()
 
@@ -177,13 +226,17 @@ def get_latest_ai_reports() -> list[dict[str, Any]]:
                     id,
                     student_id,
                     week_number,
+                    term,
                     summary,
                     strengths,
                     support_areas,
-                    parent_actions,
+                    recommendations,
                     risk_level,
+                    confidence,
+                    status,
                     teacher_approved,
-                    sent_to_parent
+                    sent_to_parent,
+                    created_at
                 FROM ai_reports
                 ORDER BY id DESC
                 """
@@ -197,13 +250,17 @@ def get_latest_ai_reports() -> list[dict[str, Any]]:
                         "id": row[0],
                         "student_id": row[1],
                         "week_number": row[2],
-                        "summary": row[3],
-                        "strengths": row[4],
-                        "support_areas": row[5],
-                        "parent_actions": row[6],
-                        "risk_level": row[7],
-                        "teacher_approved": row[8],
-                        "sent_to_parent": row[9],
+                        "term": row[3],
+                        "summary": row[4],
+                        "strengths": row[5],
+                        "support_areas": row[6],
+                        "recommendations": row[7],
+                        "risk_level": row[8],
+                        "confidence": row[9],
+                        "status": row[10],
+                        "teacher_approved": row[11],
+                        "sent_to_parent": row[12],
+                        "created_at": row[13],
                     }
                 )
             return reports
