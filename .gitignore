@@ -12,4 +12,7 @@
 *.env.test.local
 *.env.production.local
 .venv/
+.claude/
 __pycache__/
+.DS_Store
+.vscode/

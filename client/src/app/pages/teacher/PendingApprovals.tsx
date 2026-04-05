@@ -48,7 +48,7 @@ export function PendingApprovals() {
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const handleSave = async (id: number) => {
@@ -153,7 +153,7 @@ export function PendingApprovals() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
-                      onClick={() => handleSave(item.id)}
+                      onClick={() => void handleSave(item.id)}
                       disabled={savingId === item.id || approvingId === item.id}
                       className="px-4 py-2 rounded-xl text-sm border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50"
                       style={{ fontWeight: 600, color: "#334155" }}
@@ -162,7 +162,7 @@ export function PendingApprovals() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleApprove(item.id)}
+                      onClick={() => void handleApprove(item.id)}
                       disabled={savingId === item.id || approvingId === item.id}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm hover:opacity-90 transition-all disabled:opacity-50"
                       style={{ backgroundColor: "#10B981", fontWeight: 600 }}

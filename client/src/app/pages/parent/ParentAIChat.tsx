@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Send, Bot, AlertCircle, Sparkles } from "lucide-react";
-import { useActiveChild } from "../../context/ParentChildContext";
+import { useParentChild } from "../../context/ParentChildContext";
 import { postParentChat } from "../../lib/api";
 
 function defaultGreeting(firstName: string): string {
@@ -27,37 +27,43 @@ interface Message {
 }
 
 export function ParentAIChat() {
-  const { activeChild: student } = useActiveChild();
-  const [messages, setMessages] = useState<Message[]>(() => [
-    { id: 1, from: "ai", content: defaultGreeting(student.firstName), timestamp: "Just now" },
-  ]);
+  const { activeChild: student } = useParentChild();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(100);
 
-  const suggestedQuestions = useMemo(
-    () => [
-      `How is ${student.firstName} going in Maths?`,
-      `What home activities help ${student.firstName}?`,
-      `How is ${student.firstName}'s English going?`,
-      `How is ${student.firstName}'s Science going?`,
-    ],
-    [student.firstName],
-  );
-
   useEffect(() => {
+    if (!student) {
+      setMessages([]);
+      return;
+    }
     setMessages([
       { id: 1, from: "ai", content: defaultGreeting(student.firstName), timestamp: "Just now" },
     ]);
     nextId.current = 100;
-  }, [student.id, student.studentId, student.firstName]);
+  }, [student?.id, student?.studentId, student?.firstName]);
+
+  const suggestedQuestions = useMemo(
+    () =>
+      student
+        ? [
+            `How is ${student.firstName} going in Maths?`,
+            `What home activities help ${student.firstName}?`,
+            `How is ${student.firstName}'s English going?`,
+            `How is ${student.firstName}'s Science going?`,
+          ]
+        : [],
+    [student],
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
   const handleSend = async (text?: string) => {
+    if (!student) return;
     const question = (text || input).trim();
     if (!question) return;
     const userId = nextId.current++;
@@ -99,6 +105,14 @@ export function ParentAIChat() {
     }
   };
 
+  if (!student) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-sm" style={{ color: "#94A3B8" }}>Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex flex-col" style={{ height: "calc(100vh - 57px)" }}>
@@ -123,7 +137,7 @@ export function ParentAIChat() {
         <div className="mx-6 mt-4 p-3 rounded-xl flex items-start gap-2 shrink-0" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
           <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
           <p className="text-xs" style={{ color: "#1E40AF", lineHeight: "1.6" }}>
-            The AI can answer questions about {student.firstName}'s learning progress, grades, and home activities. For sensitive matters (wellbeing, behaviour), use <strong>Ask a Teacher</strong> so {student.firstName === 'Ella' ? 'her' : 'his'} teacher can respond personally.
+            The AI can answer questions about {student.firstName}&apos;s learning progress, grades, and home activities. For sensitive matters (wellbeing, behaviour), use <strong>Ask a Teacher</strong> so their teacher can respond personally.
           </p>
         </div>
 
@@ -203,14 +217,14 @@ export function ParentAIChat() {
                 type="text"
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleSend()}
+                onKeyDown={e => e.key === "Enter" && void handleSend()}
                 placeholder={`Ask the AI about ${student.firstName}'s progress...`}
                 className="flex-1 text-sm bg-transparent focus:outline-none"
                 style={{ color: "#1E293B" }}
               />
             </div>
             <button
-              onClick={() => handleSend()}
+              onClick={() => void handleSend()}
               disabled={!input.trim() || typing}
               className="w-11 h-11 rounded-xl flex items-center justify-center text-white hover:opacity-90 transition-all disabled:opacity-40"
               style={{ backgroundColor: "#2563EB" }}

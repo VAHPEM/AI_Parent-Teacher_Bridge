@@ -4,6 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.exceptions.app_exception import AppException
 from app.exceptions.handlers import app_exception_handler
 from app.routers import teacher_route, parent_route, student_route
+import app.models  # noqa: F401 — ensure all models are registered
+from app.db.database import engine, Base
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="EduX Backend MVP")
 

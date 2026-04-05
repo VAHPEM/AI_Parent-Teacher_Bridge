@@ -2,29 +2,12 @@ import { useEffect, useState } from "react";
 import { FileText, Calendar, CheckCircle, Clock, Link as LinkIcon } from "lucide-react";
 import { Link } from "react-router";
 import {
+  api,
   fetchTeacherStudents,
   postTeacherGenerateReport,
   type StudentBrief,
 } from "../../lib/api";
-
-const reports = [
-  {
-    id: 1, title: "Term 2 Mid-Year Progress Report", class: "Year 5A", date: "Week 8, Term 2",
-    status: "ready", students: 28, generated: "April 2, 2026"
-  },
-  {
-    id: 2, title: "Week 7 Assessment Summary", class: "Year 5A", date: "Week 7, Term 2",
-    status: "sent", students: 28, generated: "March 26, 2026"
-  },
-  {
-    id: 3, title: "Term 1 Final Report", class: "Year 5A", date: "Term 1", status: "sent",
-    students: 28, generated: "March 1, 2026"
-  },
-  {
-    id: 4, title: "Week 6 Assessment Summary", class: "Year 5A", date: "Week 6, Term 2",
-    status: "sent", students: 27, generated: "March 19, 2026"
-  },
-];
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   ready: { label: "Ready to Send", color: "#10B981", bg: "#D1FAE5", icon: <CheckCircle size={12} /> },
@@ -39,10 +22,27 @@ export function Reports() {
   const [genMessage, setGenMessage] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   const [studentsLoadError, setStudentsLoadError] = useState<string | null>(null);
+  const [data, setData] = useState<{
+    stats: { generated: number; sent: number; readRate: number };
+    reports: unknown[];
+  } | null>(null);
+
+  const refreshReportList = () => {
+    api
+      .get<{ stats: { generated: number; sent: number; readRate: number }; reports: unknown[] }>(
+        `/teacher/reports?teacher_id=${DEMO_TEACHER_ID}`
+      )
+      .then(setData)
+      .catch(() => setData(null));
+  };
+
+  useEffect(() => {
+    refreshReportList();
+  }, []);
 
   useEffect(() => {
     setStudentsLoadError(null);
-    fetchTeacherStudents()
+    fetchTeacherStudents({ teacherId: DEMO_TEACHER_ID })
       .then((list) => {
         setStudents(list);
         if (list.length) {
@@ -70,12 +70,21 @@ export function Reports() {
       setGenMessage(
         `AI draft saved (report #${report_id}). Review and approve under Needs Your Review — parents only see it after approval.`
       );
+      refreshReportList();
     } catch (e) {
       setGenError(e instanceof Error ? e.message : "Generation failed");
     } finally {
       setGenerating(false);
     }
   };
+
+  if (!data) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-slate-500">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -117,7 +126,7 @@ export function Reports() {
             </div>
             <button
               type="button"
-              onClick={handleGenerate}
+              onClick={() => void handleGenerate()}
               disabled={generating || students.length === 0 || studentId <= 0}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all disabled:opacity-50"
               style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
@@ -159,9 +168,9 @@ export function Reports() {
 
         <div className="grid grid-cols-3 gap-4 mb-7">
           {[
-            { label: "Reports Generated", value: "12", color: "#2563EB", bg: "#EFF6FF" },
-            { label: "Sent to Parents", value: "10", color: "#10B981", bg: "#D1FAE5" },
-            { label: "Avg. Read Rate", value: "94%", color: "#F59E0B", bg: "#FEF3C7" },
+            { label: "Reports Generated", value: data.stats.generated, color: "#2563EB", bg: "#EFF6FF" },
+            { label: "Sent to Parents", value: data.stats.sent, color: "#10B981", bg: "#D1FAE5" },
+            { label: "Avg. Read Rate", value: `${data.stats.readRate}%`, color: "#F59E0B", bg: "#FEF3C7" },
           ].map(stat => (
             <div key={stat.label} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm text-center">
               <p style={{ fontSize: "1.75rem", fontWeight: 700, color: stat.color }}>{stat.value}</p>
@@ -172,11 +181,11 @@ export function Reports() {
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100">
-            <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Report History (demo list)</h2>
+            <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Report History</h2>
           </div>
           <div className="divide-y divide-slate-100">
-            {reports.map(report => {
-              const status = statusConfig[report.status];
+            {data.reports.map((report: { id: number; title: string; term: string; week_number: number; studentCount: number; generatedAt: string | null; status: string }) => {
+              const status = statusConfig[report.status] || statusConfig.draft;
               return (
                 <div key={report.id} className="px-5 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#EFF6FF" }}>
@@ -186,7 +195,7 @@ export function Reports() {
                     <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>{report.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Calendar size={12} style={{ color: "#94A3B8" }} />
-                      <span className="text-xs" style={{ color: "#94A3B8" }}>{report.date} · {report.students} students · Generated {report.generated}</span>
+                      <span className="text-xs" style={{ color: "#94A3B8" }}>{report.term} Wk {report.week_number} · {report.studentCount} students · Generated {report.generatedAt}</span>
                     </div>
                   </div>
                   <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: status.bg, color: status.color, fontWeight: 500 }}>

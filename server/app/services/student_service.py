@@ -6,24 +6,21 @@ from app.schemas.student import StudentCreate
 class StudentService:
     @staticmethod
     def create_student(db: Session, payload: StudentCreate):
-        existing_student = db.query(Student).filter(
-            Student.student_id == payload.student_id
-        ).first()
-
-        if existing_student:
+        existing = db.query(Student).filter(Student.student_code == payload.student_code).first()
+        if existing:
             return None
 
         student = Student(
-            student_id=payload.student_id,
-            student_name=payload.student_name
+            student_code=payload.student_code,
+            name=payload.name,
+            class_id=payload.class_id,
+            parent_id=payload.parent_id,
         )
-
         db.add(student)
         db.commit()
         db.refresh(student)
-
         return student
 
     @staticmethod
-    def get_student_by_student_id(db: Session, student_id: int):
-        return db.query(Student).filter(Student.student_id == student_id).first()
+    def get_student_by_id(db: Session, student_id: int):
+        return db.query(Student).filter(Student.id == student_id).first()

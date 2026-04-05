@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertTriangle, Clock, Send, Edit3, Phone, MessageSquare,
   CheckCircle, Flag, ChevronDown, User, Shield, BookOpen,
   Lightbulb, Bot, RotateCcw, X, Bell
 } from "lucide-react";
-import { parentQuestionsData } from "../../data/mockData";
+import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 type FilterType = "urgent" | "pending" | "answered" | "all";
 
@@ -48,18 +49,26 @@ interface QuestionState {
 
 export function FlaggedQuestions() {
   const [filter, setFilter] = useState<FilterType>("all");
-  const [questionStates, setQuestionStates] = useState<Record<number, QuestionState>>(
-    Object.fromEntries(
-      parentQuestionsData.map(q => [q.id, {
-        id: q.id,
-        status: "open" as const,
-        editedResponse: q.aiSuggestedResponse,
-        showEditor: false,
-        showTemplates: false,
-        callScheduled: false,
-      }])
-    )
-  );
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [questionStates, setQuestionStates] = useState<Record<number, QuestionState>>({});
+
+  useEffect(() => {
+    api.get<any[]>("/teacher/flagged-questions").then((data) => {
+      setQuestions(data);
+      setQuestionStates(
+        Object.fromEntries(
+          data.map((q: any) => [q.id, {
+            id: q.id,
+            status: "open" as const,
+            editedResponse: q.aiSuggestedResponse,
+            showEditor: false,
+            showTemplates: false,
+            callScheduled: false,
+          }])
+        )
+      );
+    });
+  }, []);
 
   const updateState = (id: number, updates: Partial<QuestionState>) => {
     setQuestionStates(prev => ({
@@ -69,16 +78,25 @@ export function FlaggedQuestions() {
   };
 
   const handleSendAI = (id: number) => {
-    updateState(id, { status: "answered", showEditor: false });
+    const q = questions.find(q => q.id === id);
+    if (!q) return;
+    api.post(`/teacher/flagged-questions/${id}/respond?teacher_id=${DEMO_TEACHER_ID}`, { response: q.aiSuggestedResponse, method: "ai" }).then(() => {
+      updateState(id, { status: "answered", showEditor: false });
+    });
   };
 
   const handleSendEdited = (id: number) => {
-    updateState(id, { status: "answered", showEditor: false });
+    const state = questionStates[id];
+    api.post(`/teacher/flagged-questions/${id}/respond?teacher_id=${DEMO_TEACHER_ID}`, { response: state.editedResponse, method: "edited_ai" }).then(() => {
+      updateState(id, { status: "answered", showEditor: false });
+    });
   };
 
   const handleScheduleCall = (id: number) => {
-    updateState(id, { callScheduled: true });
-    setTimeout(() => updateState(id, { callScheduled: false }), 3000);
+    api.post(`/teacher/flagged-questions/${id}/schedule-call`, {}).then(() => {
+      updateState(id, { callScheduled: true });
+      setTimeout(() => updateState(id, { callScheduled: false }), 3000);
+    });
   };
 
   const handleApplyTemplate = (id: number, template: string) => {
@@ -89,11 +107,11 @@ export function FlaggedQuestions() {
     });
   };
 
-  const urgentCount = parentQuestionsData.filter(q => q.priority === "red" && questionStates[q.id]?.status === "open").length;
-  const pendingCount = parentQuestionsData.filter(q => q.priority !== "red" && questionStates[q.id]?.status === "open").length;
-  const answeredCount = parentQuestionsData.filter(q => questionStates[q.id]?.status === "answered").length;
+  const urgentCount = questions.filter((q: any) => q.priority === "red" && questionStates[q.id]?.status === "open").length;
+  const pendingCount = questions.filter((q: any) => q.priority !== "red" && questionStates[q.id]?.status === "open").length;
+  const answeredCount = questions.filter((q: any) => questionStates[q.id]?.status === "answered").length;
 
-  const filteredData = parentQuestionsData.filter(q => {
+  const filteredData = questions.filter((q: any) => {
     const state = questionStates[q.id];
     if (filter === "urgent") return q.priority === "red" && state?.status === "open";
     if (filter === "pending") return q.priority !== "red" && state?.status === "open";
@@ -102,7 +120,7 @@ export function FlaggedQuestions() {
   });
 
   const filterTabs: { key: FilterType; label: string; count: number; color?: string }[] = [
-    { key: "all", label: "All", count: parentQuestionsData.length },
+    { key: "all", label: "All", count: questions.length },
     { key: "urgent", label: "Urgent", count: urgentCount, color: "#EF4444" },
     { key: "pending", label: "Pending", count: pendingCount, color: "#F59E0B" },
     { key: "answered", label: "Answered", count: answeredCount, color: "#10B981" },
@@ -176,9 +194,9 @@ export function FlaggedQuestions() {
 
         {/* Question cards */}
         <div className="space-y-4">
-          {filteredData.map(q => {
+          {filteredData.map((q: any) => {
             const state = questionStates[q.id];
-            const priority = priorityConfig[q.priority];
+            const priority = priorityConfig[q.priority] ?? priorityConfig.yellow;
             const isAnswered = state?.status === "answered";
 
             return (
