@@ -183,6 +183,7 @@ CREATE TABLE ai_reports (
     curriculum_ref VARCHAR(255),
     status VARCHAR(50) DEFAULT 'draft',
     teacher_approved BOOLEAN DEFAULT FALSE,
+    teacher_notes TEXT,
     sent_to_parent BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
