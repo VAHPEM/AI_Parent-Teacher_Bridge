@@ -1,0 +1,11 @@
+AI report generation, RAG (FAISS), and parent Q&A now live under:
+
+  server/app/ai/
+
+Run reports from the server folder:
+  python -m app.ai.cli_reports
+
+Ingest RAG corpus:
+  python -m app.ai.ingest_rag
+
+Put API keys and DB_* in server/.env (or server/app/ai/.env).

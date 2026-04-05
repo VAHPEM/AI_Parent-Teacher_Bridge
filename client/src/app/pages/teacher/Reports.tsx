@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { FileText, Download, Eye, Calendar, CheckCircle, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileText, Calendar, CheckCircle, Clock, Link as LinkIcon } from "lucide-react";
+import { Link } from "react-router";
+import {
+  fetchTeacherStudents,
+  postTeacherGenerateReport,
+  type StudentBrief,
+} from "../../lib/api";
 
 const reports = [
   {
@@ -27,11 +33,39 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
 };
 
 export function Reports() {
+  const [students, setStudents] = useState<StudentBrief[]>([]);
+  const [studentId, setStudentId] = useState<number>(1);
   const [generating, setGenerating] = useState(false);
+  const [genMessage, setGenMessage] = useState<string | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
 
-  const handleGenerate = () => {
+  useEffect(() => {
+    fetchTeacherStudents()
+      .then((list) => {
+        setStudents(list);
+        if (list.length) {
+          setStudentId((prev) =>
+            list.some((s) => s.id === prev) ? prev : list[0].id
+          );
+        }
+      })
+      .catch(() => setStudents([]));
+  }, []);
+
+  const handleGenerate = async () => {
     setGenerating(true);
-    setTimeout(() => setGenerating(false), 2000);
+    setGenMessage(null);
+    setGenError(null);
+    try {
+      const { report_id } = await postTeacherGenerateReport(studentId);
+      setGenMessage(
+        `AI draft saved (report #${report_id}). Review and approve under Needs Your Review — parents only see it after approval.`
+      );
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -40,29 +74,67 @@ export function Reports() {
         <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
           <div>
             <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>Reports</h1>
-            <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Generate, preview and send progress reports to parents</p>
+            <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Generate AI parent reports, then approve them before parents can use them in chat</p>
           </div>
-          <button
-            onClick={handleGenerate}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all"
-            style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
-          >
-            <FileText size={15} />
-            {generating ? "Generating..." : "Generate New Report"}
-          </button>
+        </div>
+
+        <div className="mb-6 p-5 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-4">
+          <h2 style={{ fontWeight: 600, color: "#1E293B" }} className="text-sm">Generate AI parent report</h2>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs" style={{ color: "#64748B", fontWeight: 600 }}>Student</label>
+              <select
+                value={studentId}
+                onChange={(e) => setStudentId(Number(e.target.value))}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2 min-w-[200px]"
+                style={{ color: "#1E293B" }}
+              >
+                {students.length === 0 ? (
+                  <option value={1}>Student 1 (load API for list)</option>
+                ) : (
+                  students.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))
+                )}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all disabled:opacity-50"
+              style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
+            >
+              <FileText size={15} />
+              {generating ? "Generating…" : "Generate with AI"}
+            </button>
+            <Link
+              to="/teacher/pending"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border border-slate-200 hover:bg-slate-50"
+              style={{ color: "#2563EB", fontWeight: 600 }}
+            >
+              <LinkIcon size={15} />
+              Needs Your Review
+            </Link>
+          </div>
+          {genMessage && (
+            <p className="text-sm p-3 rounded-xl" style={{ backgroundColor: "#D1FAE5", color: "#065F46" }}>{genMessage}</p>
+          )}
+          {genError && (
+            <p className="text-sm p-3 rounded-xl" style={{ backgroundColor: "#FEE2E2", color: "#991B1B" }}>{genError}</p>
+          )}
         </div>
 
         {generating && (
           <div className="mb-6 p-4 rounded-2xl flex items-center gap-3" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
             <div className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
             <div>
-              <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>AI is generating your report...</p>
-              <p className="text-xs" style={{ color: "#64748B" }}>Analysing Week 8 assessment data and crafting personalised summaries</p>
+              <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>AI is generating the parent report…</p>
+              <p className="text-xs" style={{ color: "#64748B" }}>This may take up to a minute. The draft will be pending your approval.</p>
             </div>
           </div>
         )}
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-7">
           {[
             { label: "Reports Generated", value: "12", color: "#2563EB", bg: "#EFF6FF" },
@@ -76,10 +148,9 @@ export function Reports() {
           ))}
         </div>
 
-        {/* Report list */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100">
-            <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Report History</h2>
+            <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Report History (demo list)</h2>
           </div>
           <div className="divide-y divide-slate-100">
             {reports.map(report => {
@@ -99,14 +170,6 @@ export function Reports() {
                   <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: status.bg, color: status.color, fontWeight: 500 }}>
                     {status.icon}{status.label}
                   </span>
-                  <div className="flex gap-2">
-                    <button className="p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                      <Eye size={15} style={{ color: "#2563EB" }} />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-                      <Download size={15} style={{ color: "#64748B" }} />
-                    </button>
-                  </div>
                 </div>
               );
             })}

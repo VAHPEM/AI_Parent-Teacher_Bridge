@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   TrendingUp, TrendingDown, Minus, BookOpen, Award, MessageSquare,
   ArrowRight, CheckCircle, AlertCircle, Clock, Bell, Sparkles, Calendar
 } from "lucide-react";
 import { useActiveChild } from "../../context/ParentChildContext";
+import { fetchParentReport } from "../../lib/api";
 
 const gradeConfig: Record<string, { color: string; bg: string; label: string; border: string }> = {
   "A": { color: "#10B981", bg: "#D1FAE5", label: "Above Expected", border: "#A7F3D0" },
@@ -29,6 +31,32 @@ const upcomingEvents = [
 
 export function ParentDashboard() {
   const { activeChild: student } = useActiveChild();
+  const [liveSummary, setLiveSummary] = useState<string | null>(null);
+  const [reportFetchError, setReportFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLiveSummary(null);
+    setReportFetchError(null);
+    fetchParentReport(student.id)
+      .then((report) => {
+        if (cancelled) return;
+        setLiveSummary(report?.summary?.trim() ? report.summary : null);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setReportFetchError(e instanceof Error ? e.message : "Failed to load report");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [student.id]);
+
+  const mockInsight =
+    student.id === 1
+      ? "Noah is showing positive improvement in Mathematics this week (+1 grade level). His English reading comprehension could benefit from 15 minutes of daily reading practice at home."
+      : "Ella is performing above expected across all subjects this term. Her HASS project received an A — outstanding work! Continue encouraging her love of reading and creative writing.";
+
   return (
     <>
       <div className="p-6 max-w-6xl mx-auto">
@@ -86,9 +114,12 @@ export function ParentDashboard() {
             <Sparkles size={14} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
             <p className="text-sm" style={{ color: "#1E40AF" }}>
               <span style={{ fontWeight: 600 }}>AI Insight:</span>{" "}
-              {student.id === 1
-                ? "Noah is showing positive improvement in Mathematics this week (+1 grade level). His English reading comprehension could benefit from 15 minutes of daily reading practice at home."
-                : "Ella is performing above expected across all subjects this term. Her HASS project received an A — outstanding work! Continue encouraging her love of reading and creative writing."}
+              {reportFetchError ? (
+                <span className="block mt-1 text-amber-900">
+                  Could not load live report ({reportFetchError}). Showing demo text below.
+                </span>
+              ) : null}
+              {liveSummary || mockInsight}
             </p>
           </div>
         </div>

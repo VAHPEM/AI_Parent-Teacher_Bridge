@@ -1,22 +1,20 @@
-import os
 import json
 from typing import Any
-from dotenv import load_dotenv
+
 from openai import OpenAI
 
-load_dotenv()
+from app.ai.config import Config
 
 
 class CurricuLLMClient:
     def __init__(self) -> None:
-        api_key = os.getenv("CURRICULLM_API_KEY")
-        if not api_key:
+        if not Config.CURRICULLM_API_KEY:
             raise ValueError("Missing CURRICULLM_API_KEY in .env")
 
-        self.model = os.getenv("CURRICULLM_MODEL", "gpt-4o-mini")
+        self.model = Config.CURRICULLM_MODEL
         self.client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.curricullm.com/v1",
+            api_key=Config.CURRICULLM_API_KEY,
+            base_url=Config.CURRICULLM_BASE_URL,
         )
 
     def generate_parent_report(
@@ -72,7 +70,7 @@ class CurricuLLMClient:
                 "Write a short parent-friendly summary in simple language.",
                 "Suggest realistic parent actions. Do not assume the parent can teach advanced concepts.",
                 "Set risk_level as low, medium, or high.",
-                "Set needs_teacher_followup to true only when teacher intervention is likely needed."
+                "Set needs_teacher_followup to true only when teacher intervention is likely needed.",
             ],
             "return_json_schema": {
                 "student_id": "integer",
@@ -82,7 +80,7 @@ class CurricuLLMClient:
                 "parent_summary": "string",
                 "parent_actions": ["string"],
                 "risk_level": "low | medium | high",
-                "needs_teacher_followup": "boolean"
+                "needs_teacher_followup": "boolean",
             },
             "student_profile": {
                 "student_id": student["student_id"],
@@ -103,3 +101,48 @@ class CurricuLLMClient:
             )
 
         return json.dumps(prompt_body, ensure_ascii=False, indent=2)
+
+    def answer_parent_question(
+        self,
+        *,
+        student_name: str,
+        approved_report_text: str,
+        optional_kb_excerpts: str | None,
+        parent_message: str,
+    ) -> str:
+        system = (
+            "You help parents understand their child's progress at school. "
+            "The section APPROVED_TEACHER_REPORT is the only authoritative source for facts "
+            "about this child's progress, strengths, support areas, and recommendations. "
+            "If optional reference excerpts are provided, you may use them for general guidance "
+            "that does not contradict the approved report. "
+            "If the parent asks something not covered in the approved report, say you do not "
+            "have that information and suggest they message the teacher. "
+            "Use warm, clear, non-judgmental language. Do not invent grades, events, or teacher quotes."
+        )
+        parts: list[str] = [
+            f"Student name: {student_name}",
+            "",
+            "### APPROVED_TEACHER_REPORT",
+            approved_report_text.strip(),
+        ]
+        if optional_kb_excerpts and optional_kb_excerpts.strip():
+            parts.extend(
+                [
+                    "",
+                    "### Optional reference excerpts (secondary)",
+                    optional_kb_excerpts.strip(),
+                ]
+            )
+        parts.extend(["", "### Parent question", parent_message.strip()])
+        user_content = "\n".join(parts)
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            temperature=0.3,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content},
+            ],
+        )
+        return (response.choices[0].message.content or "").strip()

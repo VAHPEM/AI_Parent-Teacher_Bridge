@@ -1,23 +1,85 @@
-import { useState } from "react";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Sparkles, Info } from "lucide-react";
-import { aiAnalysisData } from "../../data/mockData";
+import { useCallback, useEffect, useState } from "react";
+import { CheckCircle, Clock, Sparkles, Info, Loader2 } from "lucide-react";
+import { Link } from "react-router";
+import {
+  fetchPendingAiReports,
+  patchAiReportDraft,
+  postTeacherApproveReport,
+  type PendingAiReportDto,
+} from "../../lib/api";
+
+function formatListField(v: unknown): string {
+  if (v == null) return "—";
+  if (Array.isArray(v)) return v.map(String).join(", ");
+  if (typeof v === "string") return v;
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+}
 
 export function PendingApprovals() {
-  const [items, setItems] = useState(
-    aiAnalysisData.filter(a => a.status === "pending" && a.confidence === "low")
-  );
-  const [approving, setApproving] = useState<number | null>(null);
+  const [items, setItems] = useState<PendingAiReportDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [summaries, setSummaries] = useState<Record<number, string>>({});
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
 
-  const handleApprove = (id: number) => {
-    setApproving(id);
-    setTimeout(() => {
-      setItems(prev => prev.filter(a => a.id !== id));
-      setApproving(null);
-    }, 800);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const list = await fetchPendingAiReports();
+      setItems(list);
+      const next: Record<number, string> = {};
+      list.forEach((r) => {
+        next[r.id] = r.summary ?? "";
+      });
+      setSummaries(next);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSave = async (id: number) => {
+    setSavingId(id);
+    setBanner(null);
+    try {
+      await patchAiReportDraft(id, { summary: summaries[id] ?? "" });
+      setBanner("Changes saved.");
+    } catch (e) {
+      setBanner(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingId(null);
+    }
   };
 
-  const handleRequestRevision = (id: number) => {
-    setItems(prev => prev.filter(a => a.id !== id));
+  const handleApprove = async (id: number) => {
+    setApprovingId(id);
+    setBanner(null);
+    try {
+      const text = summaries[id]?.trim();
+      if (text) {
+        await patchAiReportDraft(id, { summary: text });
+      }
+      await postTeacherApproveReport(id);
+      setBanner("Report approved — parents can now see it and ask the AI assistant about it.");
+      await load();
+    } catch (e) {
+      setBanner(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setApprovingId(null);
+    }
   };
 
   return (
@@ -27,91 +89,116 @@ export function PendingApprovals() {
           <div>
             <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>Needs Your Review</h1>
             <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
-              AI responses with <strong>low confidence</strong> — review and approve before sending to parents
+              AI-generated <strong>parent reports</strong> stay here until you approve. Parents only get AI answers grounded on an <strong>approved</strong> report.
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ backgroundColor: "#FEF3C7", border: "1px solid #FDE68A" }}>
-            <AlertTriangle size={14} style={{ color: "#F59E0B" }} />
-            <span className="text-sm" style={{ color: "#92400E", fontWeight: 600 }}>{items.length} awaiting review</span>
+            <Clock size={14} style={{ color: "#F59E0B" }} />
+            <span className="text-sm" style={{ color: "#92400E", fontWeight: 600 }}>{items.length} pending</span>
           </div>
         </div>
 
-        {/* Explanation banner */}
-        <div className="mb-6 p-4 rounded-2xl flex items-start gap-3" style={{ backgroundColor: "#FEF3C7", border: "1px solid #FDE68A" }}>
-          <Info size={16} className="shrink-0 mt-0.5" style={{ color: "#D97706" }} />
-          <p className="text-sm" style={{ color: "#92400E", lineHeight: "1.6" }}>
-            These responses have <strong>low confidence</strong> — the AI didn't have enough data to make an accurate recommendation. You need to manually approve before they're sent to parents. High &amp; medium confidence responses are auto-approved — view them in <strong>AI Analysis Results</strong>.
+        <div className="mb-6 p-4 rounded-2xl flex items-start gap-3" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+          <Info size={16} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
+          <p className="text-sm" style={{ color: "#1E40AF", lineHeight: "1.6" }}>
+            Edit the summary if needed, click <strong>Save changes</strong>, then <strong>Approve &amp; publish</strong>.{" "}
+            <Link to="/teacher/reports" className="underline font-semibold">Generate another report</Link> from Reports.
           </p>
         </div>
 
-        {items.length === 0 ? (
+        {banner && (
+          <div className="mb-4 p-3 rounded-xl text-sm" style={{ backgroundColor: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}>
+            {banner}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm" style={{ color: "#64748B" }}>
+            <Loader2 className="animate-spin" size={18} /> Loading pending reports…
+          </div>
+        ) : loadError ? (
+          <p className="text-sm p-4 rounded-xl" style={{ backgroundColor: "#FEE2E2", color: "#991B1B" }}>{loadError}</p>
+        ) : items.length === 0 ? (
           <div className="text-center py-24">
             <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "#D1FAE5" }}>
               <CheckCircle size={28} style={{ color: "#10B981" }} />
             </div>
-            <p style={{ fontWeight: 700, color: "#1E293B", fontSize: "1.1rem" }}>All caught up!</p>
-            <p className="text-sm mt-2" style={{ color: "#64748B" }}>No responses awaiting review. Great work!</p>
+            <p style={{ fontWeight: 700, color: "#1E293B", fontSize: "1.1rem" }}>No drafts waiting</p>
+            <p className="text-sm mt-2" style={{ color: "#64748B" }}>
+              Generate an AI parent report from{" "}
+              <Link to="/teacher/reports" className="underline font-medium" style={{ color: "#2563EB" }}>Reports</Link>.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {items.map(item => (
+            {items.map((item) => (
               <div
                 key={item.id}
-                className={`bg-white rounded-2xl border-2 shadow-sm p-5 transition-all ${approving === item.id ? "opacity-50 scale-95" : ""}`}
+                className="bg-white rounded-2xl border-2 shadow-sm p-5 transition-all"
                 style={{ borderColor: "#FDE68A" }}
               >
                 <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm"
-                      style={{ backgroundColor: item.avatarColor, fontWeight: 700 }}>
-                      {item.avatar}
-                    </div>
-                    <div>
-                      <p className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>{item.student}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EFF6FF", color: "#2563EB" }}>{item.year}</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#F8FAFC", color: "#64748B", border: "1px solid #E2E8F0" }}>{item.subject}</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: "#FEF3C7", color: "#D97706", fontWeight: 500 }}>
-                          <AlertTriangle size={10} />Low Confidence
-                        </span>
-                        <span className="text-xs" style={{ color: "#94A3B8" }}><Clock size={11} className="inline mr-1" />{item.timestamp}</span>
-                      </div>
+                  <div>
+                    <p className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>{item.student_name}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EFF6FF", color: "#2563EB" }}>
+                        Week {item.week_number}{item.term ? ` · ${item.term}` : ""}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#F8FAFC", color: "#64748B", border: "1px solid #E2E8F0" }}>
+                        Risk: {item.risk_level ?? "—"}
+                      </span>
+                      <span className="text-xs" style={{ color: "#94A3B8" }}><Clock size={11} className="inline mr-1" />Pending approval</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
+                      type="button"
+                      onClick={() => handleSave(item.id)}
+                      disabled={savingId === item.id || approvingId === item.id}
+                      className="px-4 py-2 rounded-xl text-sm border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50"
+                      style={{ fontWeight: 600, color: "#334155" }}
+                    >
+                      {savingId === item.id ? "Saving…" : "Save changes"}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleApprove(item.id)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm hover:opacity-90 transition-all"
+                      disabled={savingId === item.id || approvingId === item.id}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm hover:opacity-90 transition-all disabled:opacity-50"
                       style={{ backgroundColor: "#10B981", fontWeight: 600 }}
                     >
                       <CheckCircle size={14} />
-                      Approve &amp; Send
-                    </button>
-                    <button
-                      onClick={() => handleRequestRevision(item.id)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm border hover:bg-red-50 transition-colors"
-                      style={{ borderColor: "#FECACA", color: "#EF4444", fontWeight: 500 }}
-                    >
-                      <XCircle size={14} />
-                      Request Revision
+                      {approvingId === item.id ? "Publishing…" : "Approve & publish"}
                     </button>
                   </div>
                 </div>
 
+                <div className="mt-4">
+                  <label className="text-xs block mb-1" style={{ fontWeight: 600, color: "#64748B" }}>Parent summary (editable)</label>
+                  <textarea
+                    value={summaries[item.id] ?? ""}
+                    onChange={(e) => setSummaries((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                    rows={5}
+                    className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    style={{ color: "#1E293B" }}
+                  />
+                </div>
+
                 <div className="mt-4 grid sm:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl" style={{ backgroundColor: "#FEF3C7" }}>
-                    <p className="text-xs mb-1" style={{ fontWeight: 600, color: "#92400E" }}>Weak Areas Identified</p>
-                    <div className="flex flex-wrap gap-1">
-                      {item.weakAreas.slice(0, 3).map(a => (
-                        <span key={a} className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "white", color: "#92400E" }}>{a}</span>
-                      ))}
-                    </div>
+                  <div className="p-3 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                    <p className="text-xs mb-1" style={{ fontWeight: 600, color: "#475569" }}>Strengths</p>
+                    <p className="text-xs" style={{ color: "#64748B", lineHeight: 1.5 }}>{formatListField(item.strengths)}</p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ backgroundColor: "#EFF6FF" }}>
                     <p className="text-xs mb-1" style={{ fontWeight: 600, color: "#1E40AF" }}>
-                      <Sparkles size={11} className="inline mr-1" />AI Recommendation Preview
+                      <Sparkles size={11} className="inline mr-1" />Support areas &amp; recs
                     </p>
-                    <p className="text-xs" style={{ color: "#1E40AF" }}>{item.recommendations[0]}</p>
+                    <p className="text-xs" style={{ color: "#1E40AF", lineHeight: 1.5 }}>
+                      <strong>Support:</strong> {formatListField(item.support_areas)}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "#1E40AF", lineHeight: 1.5 }}>
+                      <strong>Home:</strong> {formatListField(item.recommendations)}
+                    </p>
                   </div>
                 </div>
               </div>

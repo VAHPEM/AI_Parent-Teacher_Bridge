@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, AlertCircle, Sparkles } from "lucide-react";
 import { useActiveChild } from "../../context/ParentChildContext";
+import { postParentChat } from "../../lib/api";
 
 const aiResponses: Record<string, string> = {
   default: "Hi! I'm the EduTrack AI assistant. I can help you with Noah's learning progress, suggest home activities, or explain assessment results. What would you like to know?",
@@ -49,21 +50,52 @@ export function ParentAIChat() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const nextId = useRef(100);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  const handleSend = (text?: string) => {
-    const question = text || input;
-    if (!question.trim()) return;
-    setMessages(prev => [...prev, { id: prev.length + 1, from: "user", content: question, timestamp: "Just now" }]);
+  const handleSend = async (text?: string) => {
+    const question = (text || input).trim();
+    if (!question) return;
+    const userId = nextId.current++;
+    setMessages((prev) => [
+      ...prev,
+      { id: userId, from: "user", content: question, timestamp: "Just now" },
+    ]);
     setInput("");
     setTyping(true);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: getAIResponse(question), timestamp: "Just now" }]);
+    try {
+      const reply = await postParentChat(student.id, question);
+      const aiId = nextId.current++;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: aiId,
+          from: "ai",
+          content:
+            reply ||
+            "I did not get a reply from the server. Check that the API is running and a teacher-approved report exists for this student.",
+          timestamp: "Just now",
+        },
+      ]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Request failed";
+      const fallback = getAIResponse(question);
+      const aiId = nextId.current++;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: aiId,
+          from: "ai",
+          content: `Could not reach the live assistant (${msg}). Here is an offline suggestion:\n\n${fallback}`,
+          timestamp: "Just now",
+        },
+      ]);
+    } finally {
       setTyping(false);
-    }, 1200);
+    }
   };
 
   return (

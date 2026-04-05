@@ -1,6 +1,10 @@
-from report_service import generate_report_for_student
-from db import get_all_student_ids
-def main():
+"""CLI: generate AI reports for all students. Run from server/: python -m app.ai.cli_reports"""
+
+from app.ai.repository import get_all_student_ids
+from app.ai.report_service import generate_report_for_student
+
+
+def main() -> None:
     print("🚀 Starting AI report generation...")
 
     student_ids = get_all_student_ids()
@@ -18,6 +22,7 @@ def main():
             print(f"❌ Error for student {student_id}: {e}")
 
     print("\n🎉 All reports generated successfully!")
+
 
 if __name__ == "__main__":
     main()
