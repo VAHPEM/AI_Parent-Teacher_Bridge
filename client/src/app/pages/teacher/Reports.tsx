@@ -19,10 +19,10 @@ export function Reports() {
 
   const handleGenerate = () => {
     setGenerating(true);
-    api.post("/teacher/reports/generate?class_id=1&term=Term%202&week=8", {}).then(() => {
-      api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}`).then(setData);
-      setGenerating(false);
-    });
+    const q = `teacher_id=${DEMO_TEACHER_ID}&class_id=1&term=Term%202&week=8`;
+    api.post(`/teacher/reports/generate?${q}`, {})
+      .then(() => api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}`).then(setData))
+      .finally(() => setGenerating(false));
   };
 
   if (!data) return <div>Loading...</div>;

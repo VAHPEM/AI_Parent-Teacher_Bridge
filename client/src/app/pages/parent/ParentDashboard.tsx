@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
+import { DEMO_PARENT_ID } from "../../lib/config";
 
 const gradeConfig: Record<string, { color: string; bg: string; label: string; border: string }> = {
   "A":  { color: "#10B981", bg: "#D1FAE5", label: "Above Expected", border: "#A7F3D0" },
@@ -36,7 +37,7 @@ export function ParentDashboard() {
 
   useEffect(() => {
     if (!student) return;
-    api.get<DashboardData>(`/parent/dashboard/${student.id}`).then(setData);
+    api.get<DashboardData>(`/parent/dashboard/${student.id}?parent_id=${DEMO_PARENT_ID}`).then(setData);
   }, [student?.id]);
 
   if (!student || !data) return (

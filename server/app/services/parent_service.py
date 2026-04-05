@@ -70,6 +70,14 @@ def _trend_from_records(records: list) -> str:
     return "up" if diff > 5 else ("down" if diff < -5 else "stable")
 
 
+def _assert_student_belongs_to_parent(db: Session, student_id: int, parent_id: int) -> None:
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise AppException("Student not found", 404)
+    if student.parent_id != parent_id:
+        raise AppException("Not allowed to access this student", 403)
+
+
 class ParentService:
 
     # ── Children ──────────────────────────────────────────────────────
@@ -120,10 +128,9 @@ class ParentService:
 
     # ── Dashboard ─────────────────────────────────────────────────────
     @staticmethod
-    def get_dashboard(db: Session, student_id: int) -> dict:
+    def get_dashboard(db: Session, student_id: int, parent_id: int) -> dict:
+        _assert_student_belongs_to_parent(db, student_id, parent_id)
         student = db.query(Student).filter(Student.id == student_id).first()
-        if not student:
-            raise AppException("Student not found", 404)
 
         latest_week = (
             db.query(func.max(WeeklyRecord.week_number))
@@ -186,10 +193,9 @@ class ParentService:
 
     # ── Progress ──────────────────────────────────────────────────────
     @staticmethod
-    def get_progress(db: Session, student_id: int) -> dict:
+    def get_progress(db: Session, student_id: int, parent_id: int) -> dict:
+        _assert_student_belongs_to_parent(db, student_id, parent_id)
         student = db.query(Student).filter(Student.id == student_id).first()
-        if not student:
-            raise AppException("Student not found", 404)
 
         latest_week = (
             db.query(func.max(WeeklyRecord.week_number))
@@ -269,7 +275,8 @@ class ParentService:
 
     # ── Activities ────────────────────────────────────────────────────
     @staticmethod
-    def get_activities(db: Session, student_id: int) -> list:
+    def get_activities(db: Session, student_id: int, parent_id: int) -> list:
+        _assert_student_belongs_to_parent(db, student_id, parent_id)
         rows = (
             db.query(Activity)
             .filter(Activity.student_id == student_id)
@@ -311,10 +318,9 @@ class ParentService:
 
     # ── Teachers ──────────────────────────────────────────────────────
     @staticmethod
-    def get_teachers(db: Session, student_id: int) -> list:
+    def get_teachers(db: Session, student_id: int, parent_id: int) -> list:
+        _assert_student_belongs_to_parent(db, student_id, parent_id)
         student = db.query(Student).filter(Student.id == student_id).first()
-        if not student:
-            raise AppException("Student not found", 404)
         cls = db.query(Class).filter(Class.id == student.class_id).first()
         teacher = db.query(Teacher).filter(Teacher.id == cls.teacher_id).first() if cls else None
         if not teacher:
@@ -330,7 +336,7 @@ class ParentService:
     # ── Messages (backed by parent_questions + replies) ───────────────
     @staticmethod
     def get_messages(db: Session, student_id: int, parent_id: int) -> list:
-        teachers = ParentService.get_teachers(db, student_id)
+        teachers = ParentService.get_teachers(db, student_id, parent_id)
         result = []
         for t in teachers:
             questions = (
@@ -374,6 +380,7 @@ class ParentService:
 
     @staticmethod
     def send_message(db: Session, student_id: int, teacher_id: int, text: str, parent_id: int) -> dict:
+        _assert_student_belongs_to_parent(db, student_id, parent_id)
         q = ParentQuestion(
             parent_id=parent_id,
             student_id=student_id,
@@ -388,6 +395,7 @@ class ParentService:
     # ── Questions ─────────────────────────────────────────────────────
     @staticmethod
     def get_questions(db: Session, student_id: int, parent_id: int) -> list:
+        _assert_student_belongs_to_parent(db, student_id, parent_id)
         questions = (
             db.query(ParentQuestion)
             .filter(
@@ -433,6 +441,7 @@ class ParentService:
 
     @staticmethod
     def create_question(db: Session, student_id: int, subject: str, content: str, priority: str, parent_id: int) -> dict:
+        _assert_student_belongs_to_parent(db, student_id, parent_id)
         # Look up or create subject by name
         subject_id = None
         if subject:
@@ -461,6 +470,8 @@ class ParentService:
         q = db.query(ParentQuestion).filter(ParentQuestion.id == question_id).first()
         if not q:
             raise AppException("Question not found", 404)
+        if q.parent_id != parent_id:
+            raise AppException("Not allowed to update this question", 403)
         reply = QuestionReply(
             question_id=question_id,
             from_role="parent",

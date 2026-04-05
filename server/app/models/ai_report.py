@@ -20,5 +20,6 @@ class AIReport(Base):
     curriculum_ref   = Column(String(255))
     status           = Column(String(50), default="draft")
     teacher_approved = Column(Boolean, default=False)
+    teacher_notes    = Column(Text)
     sent_to_parent   = Column(Boolean, default=False)
     created_at       = Column(TIMESTAMP, server_default=func.now())

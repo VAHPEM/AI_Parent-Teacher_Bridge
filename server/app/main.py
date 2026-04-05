@@ -5,9 +5,10 @@ from app.exceptions.app_exception import AppException
 from app.exceptions.handlers import app_exception_handler
 from app.routers import teacher_route, parent_route, student_route
 import app.models  # noqa: F401 — ensure all models are registered
-from app.db.database import engine, Base
+from app.db.database import engine, Base, apply_schema_patches
 
 Base.metadata.create_all(bind=engine)
+apply_schema_patches(engine)
 
 app = FastAPI(title="EduX Backend MVP")
 
