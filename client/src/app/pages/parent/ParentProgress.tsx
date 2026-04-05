@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
+import { DEMO_PARENT_ID } from "../../lib/config";
 
 const gradeConfig: Record<string, { color: string; bg: string; border: string }> = {
   "A":  { color: "#10B981", bg: "#D1FAE5", border: "#A7F3D0" },
@@ -42,7 +43,7 @@ export function ParentProgress() {
     if (!activeChild) return;
     setIsLoading(true);
     api.get<{ subjects: Subject[]; progressHistory: Record<string, unknown>[] }>(
-      `/parent/progress/${activeChild.id}`
+      `/parent/progress/${activeChild.id}?parent_id=${DEMO_PARENT_ID}`
     ).then(d => {
       setSubjects(d.subjects);
       setProgressHistory(d.progressHistory);

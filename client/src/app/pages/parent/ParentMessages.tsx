@@ -100,7 +100,7 @@ export function ParentMessages() {
     setAiMessages(prev => [...prev, { id: prev.length + 1, from: "user", content: question, timestamp: "Just now" }]);
     setAiInput("");
     setAiTyping(true);
-    api.post<{reply: string}>(`/parent/chat/${student.id}`, { message: question })
+    api.post<{reply: string}>(`/parent/chat/${student.id}?parent_id=${DEMO_PARENT_ID}`, { message: question })
       .then(res => {
         setAiMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: res.reply, timestamp: "Just now" }]);
       })

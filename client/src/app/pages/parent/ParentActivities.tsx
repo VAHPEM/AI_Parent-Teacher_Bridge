@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { BookOpen, Calculator, FlaskConical, GraduationCap, Sparkles, CheckCircle, Star, Clock, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
+import { DEMO_PARENT_ID } from "../../lib/config";
 
 const SUBJECT_COLORS: Record<string, { color: string; bg: string }> = {
   "English":     { color: "#2563EB", bg: "#EFF6FF" },
@@ -54,7 +55,7 @@ export function ParentActivities() {
 
   useEffect(() => {
     if (!student) return;
-    api.get<Activity[]>(`/parent/activities/${student.id}`).then(data => {
+    api.get<Activity[]>(`/parent/activities/${student.id}?parent_id=${DEMO_PARENT_ID}`).then(data => {
       setActivities(data);
       setCompleted(new Set(data.filter(a => a.completed).map(a => a.id)));
     });

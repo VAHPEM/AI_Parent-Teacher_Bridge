@@ -67,19 +67,23 @@ export function AIAnalysis() {
     });
   };
 
+  const normStatus = (s: string | undefined) => (s || "").toLowerCase();
+
   const getFilterKey = (status: string): FilterType => {
-    if (status === "auto_approved") return "auto_approved";
-    if (status === "pending") return "needs_review";
-    return "needs_revision";
+    const s = normStatus(status);
+    if (["auto_approved", "published", "approved"].includes(s)) return "auto_approved";
+    if (["pending", "draft"].includes(s)) return "needs_review";
+    if (s === "needs_revision") return "needs_revision";
+    return "needs_review";
   };
 
   const filtered = analyses.filter(a => filter === "all" || getFilterKey(a.status) === filter);
 
   const counts = {
     all: analyses.length,
-    auto_approved: analyses.filter(a => a.status === "auto_approved").length,
-    needs_review: analyses.filter(a => a.status === "pending").length,
-    needs_revision: analyses.filter(a => a.status === "needs_revision").length,
+    auto_approved: analyses.filter(a => ["auto_approved", "published", "approved"].includes(normStatus(a.status))).length,
+    needs_review: analyses.filter(a => ["pending", "draft"].includes(normStatus(a.status))).length,
+    needs_revision: analyses.filter(a => normStatus(a.status) === "needs_revision").length,
   };
 
   return (
@@ -150,12 +154,13 @@ export function AIAnalysis() {
         {/* Cards grid */}
         <div className="grid lg:grid-cols-2 gap-5">
           {filtered.map(analysis => {
-            const status = statusConfig[analysis.status] ?? statusConfig.pending;
-            const confidence = confidenceConfig[analysis.confidence];
+            const st = normStatus(analysis.status);
+            const status = statusConfig[analysis.status] ?? statusConfig[st] ?? statusConfig.pending;
+            const confidence = confidenceConfig[analysis.confidence] ?? confidenceConfig.medium;
             const isExpanded = expandedCards.has(analysis.id);
             const showTrans = showTranslation.has(analysis.id);
-            const isAutoApproved = analysis.status === "auto_approved";
-            const isPending = analysis.status === "pending";
+            const isAutoApproved = ["auto_approved", "published", "approved"].includes(st);
+            const isPending = st === "pending";
 
             return (
               <div
@@ -203,8 +208,13 @@ export function AIAnalysis() {
                     <BrainCircuit size={14} style={{ color: "#2563EB" }} />
                     <span className="text-xs" style={{ fontWeight: 600, color: "#2563EB", letterSpacing: "0.05em" }}>AI ANALYSIS</span>
                   </div>
+                  {analysis.summary ? (
+                    <p className="text-sm mb-3" style={{ color: "#334155", lineHeight: 1.65 }}>
+                      {analysis.summary}
+                    </p>
+                  ) : null}
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {analysis.weakAreas.map((area: string) => (
+                    {(analysis.weakAreas || []).map((area: string) => (
                       <span key={area} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: "#FEF3C7", color: "#D97706", fontWeight: 500 }}>
                         ⚠ {area}
                       </span>
@@ -224,12 +234,16 @@ export function AIAnalysis() {
                       <span className="text-xs" style={{ fontWeight: 600, color: "#10B981", letterSpacing: "0.05em" }}>RECOMMENDATIONS FOR PARENTS</span>
                     </div>
                     <ul className="space-y-1">
-                      {analysis.recommendations.slice(0, isExpanded ? undefined : 2).map((rec: string, i: number) => (
+                      {(analysis.recommendations || []).length === 0 ? (
+                        <li className="text-xs" style={{ color: "#94A3B8" }}>No bullet recommendations; see summary above.</li>
+                      ) : (
+                        (analysis.recommendations || []).slice(0, isExpanded ? undefined : 2).map((rec: string, i: number) => (
                         <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "#64748B" }}>
                           <CheckCircle size={12} className="shrink-0 mt-0.5" style={{ color: "#10B981" }} />
                           {rec}
                         </li>
-                      ))}
+                      ))
+                      )}
                     </ul>
                   </div>
 
@@ -330,7 +344,11 @@ export function AIAnalysis() {
               <BrainCircuit size={28} style={{ color: "#94A3B8" }} />
             </div>
             <p style={{ fontWeight: 600, color: "#1E293B" }}>No analyses found</p>
-            <p className="text-sm mt-1" style={{ color: "#94A3B8" }}>Try changing the filter above</p>
+            <p className="text-sm mt-1 max-w-md mx-auto" style={{ color: "#94A3B8" }}>
+              {analyses.length === 0
+                ? "No AI reports in the database yet. Run your SQL seed (e.g. create_data.sql) or generate a report for a student from the API."
+                : "Try the “All” filter, or another tab — counts above show how many are in each category."}
+            </p>
           </div>
         )}
       </div>

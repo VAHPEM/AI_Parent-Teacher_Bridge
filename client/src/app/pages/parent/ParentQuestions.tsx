@@ -36,7 +36,7 @@ export function ParentQuestions() {
     api.get<any[]>(`/parent/questions/${student.id}?parent_id=${DEMO_PARENT_ID}`).then((data) => {
       const mapped = data.map((q) => ({
         id: q.id,
-        subject: q.subject,
+        subject: q.subject ?? "General",
         teacher: "Ms. Jennifer Thompson",
         teacherInitials: "MT",
         teacherColor: "#2563EB",

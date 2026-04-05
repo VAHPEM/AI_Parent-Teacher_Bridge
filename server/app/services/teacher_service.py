@@ -12,6 +12,12 @@ from app.models.parent import Parent
 from app.models.question_reply import QuestionReply
 from app.models.canvas_sync_log import CanvasSyncLog
 from app.exceptions.app_exception import AppException
+from app.services.ai_report_service import (
+    assert_teacher_for_student,
+    confidence_from_risk,
+    create_ai_report_for_student,
+    delete_stub_reports_for_class,
+)
 from datetime import datetime
 
 # Palette used to derive avatar colour from student/parent id
@@ -265,6 +271,10 @@ class TeacherService:
     # ── AI Analysis ───────────────────────────────────────────────────
     @staticmethod
     def _format_ai_report(report: AIReport, student: Student) -> dict:
+        recs = list(report.recommendations or [])
+        parent_acts = list(report.parent_actions or [])
+        merged_recs = recs if recs else parent_acts
+        summary = (report.summary or "").strip()
         return {
             "id":            report.id,
             "avatar":        _initials(student.name),
@@ -273,11 +283,12 @@ class TeacherService:
             "year":          student.grade_level or student.class_name or "",
             "subject":       None,
             "status":        report.status,
-            "confidence":    "medium",
+            "confidence":    confidence_from_risk(report.risk_level),
+            "summary":       summary,
             "weakAreas":     list(report.support_areas or []),
-            "recommendations": list(report.recommendations or []),
+            "recommendations": merged_recs,
             "curriculumRef": report.curriculum_ref or "",
-            "practicePreview": (list(report.recommendations or []) + [""])[ 0],
+            "practicePreview": (merged_recs + [summary or "See summary above."])[0],
             "timestamp":     _time_ago(report.created_at),
         }
 
@@ -289,18 +300,48 @@ class TeacherService:
             .order_by(desc(AIReport.created_at))
             .all()
         )
-        return [TeacherService._format_ai_report(r, s) for r, s in rows]
+        out = [TeacherService._format_ai_report(r, s) for r, s in rows]
+        if confidence:
+            c = confidence.lower()
+            out = [x for x in out if (x.get("confidence") or "").lower() == c]
+        return out
 
     @staticmethod
-    def update_ai_analysis_status(db: Session, report_id: int, status: str) -> dict:
+    def update_ai_analysis_status(
+        db: Session,
+        report_id: int,
+        status: str,
+        teacher_notes: str | None = None,
+    ) -> dict:
         report = db.query(AIReport).filter(AIReport.id == report_id).first()
         if not report:
             raise AppException("Report not found", 404)
         report.status = status
         if status == "auto_approved":
             report.teacher_approved = True
+            if teacher_notes and teacher_notes.strip():
+                report.teacher_notes = teacher_notes.strip()
+        elif status == "needs_revision":
+            report.teacher_approved = False
+            if teacher_notes and teacher_notes.strip():
+                report.teacher_notes = teacher_notes.strip()
         db.commit()
         return {"id": report.id, "status": report.status}
+
+    @staticmethod
+    def generate_student_ai_report(
+        db: Session, teacher_id: int, student_id: int, term: str = "Term 2"
+    ) -> dict:
+        assert_teacher_for_student(db, teacher_id, student_id)
+        row = create_ai_report_for_student(db, student_id, term=term)
+        return {
+            "id": row.id,
+            "student_id": row.student_id,
+            "week_number": row.week_number,
+            "status": row.status,
+            "risk_level": row.risk_level,
+            "teacher_approved": row.teacher_approved,
+        }
 
     # ── Flagged Questions ─────────────────────────────────────────────
     @staticmethod
@@ -402,21 +443,43 @@ class TeacherService:
         }
 
     @staticmethod
-    def generate_report(db: Session, class_id: int, term: str, week: int) -> dict:
+    def generate_report(db: Session, teacher_id: int, class_id: int, term: str, week: int) -> dict:
+        """
+        One real AI report per student via CurricuLLM (api.curricullm.com), not placeholder rows.
+        """
+        cls = db.query(Class).filter(Class.id == class_id).first()
+        if not cls:
+            raise AppException("Class not found", 404)
+        if cls.teacher_id != teacher_id:
+            raise AppException("Not allowed to generate reports for this class", 403)
+
+        removed_stubs = delete_stub_reports_for_class(db, class_id)
+
         students = db.query(Student).filter(Student.class_id == class_id).all()
-        created = []
+        created: list[dict] = []
+        skipped: list[dict] = []
+
         for s in students:
-            report = AIReport(
-                student_id=s.id,
-                week_number=week,
-                term=term,
-                summary=f"AI-generated report for {s.name}, {term} Week {week}.",
-                status="draft",
-            )
-            db.add(report)
-            created.append(s.id)
-        db.commit()
-        return {"generated": len(created), "term": term, "week": week}
+            try:
+                row = create_ai_report_for_student(db, s.id, term=term)
+                created.append({"student_id": s.id, "report_id": row.id, "week_number": row.week_number})
+            except AppException as e:
+                if e.status_code >= 500:
+                    raise
+                msg = (e.message or "").lower()
+                if "weekly records" in msg or "student not found" in msg:
+                    skipped.append({"student_id": s.id, "reason": e.message})
+                else:
+                    skipped.append({"student_id": s.id, "reason": e.message})
+
+        return {
+            "generated": len(created),
+            "skipped": skipped,
+            "reports": created,
+            "legacy_stub_reports_removed": removed_stubs,
+            "term": term,
+            "week_requested": week,
+        }
 
     # ── Canvas Sync ───────────────────────────────────────────────────
     @staticmethod

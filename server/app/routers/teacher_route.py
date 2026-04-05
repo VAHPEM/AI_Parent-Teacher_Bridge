@@ -63,14 +63,37 @@ def get_ai_analysis(confidence: str = Query(None), db: Session = Depends(get_db)
 
 
 @router.put("/ai-analysis/{report_id}/approve")
-def approve_analysis(report_id: int, db: Session = Depends(get_db)):
-    data = TeacherService.update_ai_analysis_status(db, report_id, "auto_approved")
+def approve_analysis(
+    report_id: int,
+    teacher_notes: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    data = TeacherService.update_ai_analysis_status(
+        db, report_id, "auto_approved", teacher_notes=teacher_notes
+    )
     return ApiResponse(body=data, message="success")
 
 
 @router.put("/ai-analysis/{report_id}/revise")
-def revise_analysis(report_id: int, db: Session = Depends(get_db)):
-    data = TeacherService.update_ai_analysis_status(db, report_id, "needs_revision")
+def revise_analysis(
+    report_id: int,
+    teacher_notes: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    data = TeacherService.update_ai_analysis_status(
+        db, report_id, "needs_revision", teacher_notes=teacher_notes
+    )
+    return ApiResponse(body=data, message="success")
+
+
+@router.post("/students/{student_id}/generate-ai-report")
+def generate_student_ai_report(
+    student_id: int,
+    teacher_id: int = Query(...),
+    term: str = Query("Term 2"),
+    db: Session = Depends(get_db),
+):
+    data = TeacherService.generate_student_ai_report(db, teacher_id, student_id, term=term)
     return ApiResponse(body=data, message="success")
 
 
@@ -99,8 +122,14 @@ def get_reports(teacher_id: int = Query(...), db: Session = Depends(get_db)):
 
 
 @router.post("/reports/generate")
-def generate_report(class_id: int = Query(1), term: str = Query("Term 2"), week: int = Query(8), db: Session = Depends(get_db)):
-    data = TeacherService.generate_report(db, class_id, term, week)
+def generate_report(
+    teacher_id: int = Query(...),
+    class_id: int = Query(1),
+    term: str = Query("Term 2"),
+    week: int = Query(8),
+    db: Session = Depends(get_db),
+):
+    data = TeacherService.generate_report(db, teacher_id, class_id, term, week)
     return ApiResponse(body=data, message="success")
 
 

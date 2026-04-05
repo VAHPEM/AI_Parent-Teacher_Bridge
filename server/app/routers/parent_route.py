@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.dto.api_response import ApiResponse
 from app.services.parent_service import ParentService
+from app.services.parent_chat_service import parent_chat
 from app.schemas.parent import MessageCreate, ChatRequest, QuestionCreate, FollowUpCreate, SettingsUpdate
 
 router = APIRouter(prefix="/parent", tags=["Parent"])
@@ -19,20 +20,20 @@ def get_children(parent_id: int = Query(...), db: Session = Depends(get_db)):
 
 
 @router.get("/dashboard/{student_id}")
-def get_dashboard(student_id: int, db: Session = Depends(get_db)):
-    data = ParentService.get_dashboard(db, student_id)
+def get_dashboard(student_id: int, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_dashboard(db, student_id, parent_id)
     return ApiResponse(body=data, message="success")
 
 
 @router.get("/progress/{student_id}")
-def get_progress(student_id: int, db: Session = Depends(get_db)):
-    data = ParentService.get_progress(db, student_id)
+def get_progress(student_id: int, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_progress(db, student_id, parent_id)
     return ApiResponse(body=data, message="success")
 
 
 @router.get("/activities/{student_id}")
-def get_activities(student_id: int, db: Session = Depends(get_db)):
-    data = ParentService.get_activities(db, student_id)
+def get_activities(student_id: int, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_activities(db, student_id, parent_id)
     return ApiResponse(body=data, message="success")
 
 
@@ -43,8 +44,8 @@ def complete_activity(activity_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/teachers/{student_id}")
-def get_teachers(student_id: int, db: Session = Depends(get_db)):
-    data = ParentService.get_teachers(db, student_id)
+def get_teachers(student_id: int, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_teachers(db, student_id, parent_id)
     return ApiResponse(body=data, message="success")
 
 
@@ -61,8 +62,13 @@ def send_message(student_id: int, payload: MessageCreate, parent_id: int = Query
 
 
 @router.post("/chat/{student_id}")
-def parent_chat(student_id: int, payload: ChatRequest, db: Session = Depends(get_db)):
-    data = {"reply": "I don't have enough data to answer that. Please ask the teacher directly.", "confidence": "low", "sources": []}
+def parent_chat_endpoint(
+    student_id: int,
+    payload: ChatRequest,
+    parent_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    data = parent_chat(db, student_id, parent_id, payload.message)
     return ApiResponse(body=data, message="success")
 
 
