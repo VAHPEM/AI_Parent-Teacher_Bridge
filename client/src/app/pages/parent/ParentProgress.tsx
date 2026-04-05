@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Minus, BookOpen, CheckCircle, AlertCircle, Sp
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
+import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
 
@@ -33,6 +34,7 @@ interface Subject {
 
 export function ParentProgress() {
   const { activeChild } = useParentChild();
+  const { t } = useTranslation("progress");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [progressHistory, setProgressHistory] = useState<Record<string, unknown>[]>([]);
   const [activeSubjectMap, setActiveSubjectMap] = useState<Record<number, string>>({});
@@ -51,13 +53,13 @@ export function ParentProgress() {
 
   if (!activeChild || isLoading) return (
     <div className="flex items-center justify-center h-64">
-      <p className="text-sm" style={{ color: "#94A3B8" }}>Loading...</p>
+      <p className="text-sm" style={{ color: "#94A3B8" }}>{t("loading", { ns: "common" })}</p>
     </div>
   );
 
   if (subjects.length === 0) return (
     <div className="flex items-center justify-center h-64">
-      <p className="text-sm" style={{ color: "#94A3B8" }}>No progress data available yet.</p>
+      <p className="text-sm" style={{ color: "#94A3B8" }}>{t("no_data")}</p>
     </div>
   );
 
@@ -67,20 +69,34 @@ export function ParentProgress() {
   const sc = SUBJECT_COLORS[active.name] ?? { color: "#64748B", bg: "#F1F5F9" };
   const gc = gradeConfig[active.grade] || { color: "#94A3B8", bg: "#F1F5F9", border: "#E2E8F0" };
 
+  const trendLabel = active.trend === "up"
+    ? t("trend.improving", { ns: "common" })
+    : active.trend === "down"
+    ? t("trend.declining", { ns: "common" })
+    : t("trend.stable", { ns: "common" });
+
+  const weeklyGoalKey = active.name === "English" || active.name === "Mathematics"
+    ? `weekly_goals.${active.name}`
+    : "weekly_goals.default";
+
   return (
     <>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>{activeChild.firstName}'s Progress & Grades</h1>
-          <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Term 2, Week 8 · Greenwood Primary School · {activeChild.year}</p>
+          <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>
+            {t("title", { firstName: activeChild.firstName })}
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
+            {t("subtitle", { term: 2, week: 8, school: activeChild.school, year: activeChild.year })}
+          </p>
         </div>
 
         {/* Progress chart */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Score Trend — Weeks 5 to 8</h2>
-              <p className="text-sm" style={{ color: "#64748B" }}>Assessment scores over the past 4 weeks</p>
+              <h2 style={{ fontWeight: 600, color: "#1E293B" }}>{t("chart_title")}</h2>
+              <p className="text-sm" style={{ color: "#64748B" }}>{t("chart_subtitle")}</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
@@ -130,7 +146,7 @@ export function ParentProgress() {
 
         {/* Subject detail */}
         <div className="grid lg:grid-cols-2 gap-5">
-          {/* Left: grades & teacher */}
+          {/* Left */}
           <div className="space-y-4">
             {/* Grade card */}
             <div className="bg-white rounded-2xl border shadow-sm p-5" style={{ borderColor: gc.border }}>
@@ -153,7 +169,7 @@ export function ParentProgress() {
                     {active.trend === "down" && <TrendingDown size={14} style={{ color: "#EF4444" }} />}
                     {active.trend === "stable" && <Minus size={14} style={{ color: "#94A3B8" }} />}
                     <span className="text-xs" style={{ color: active.trend === "up" ? "#10B981" : active.trend === "down" ? "#EF4444" : "#94A3B8" }}>
-                      {active.score}% · {active.trend === "up" ? "Improving" : active.trend === "down" ? "Declining" : "Stable"}
+                      {active.score}% · {trendLabel}
                     </span>
                   </div>
                 </div>
@@ -163,11 +179,10 @@ export function ParentProgress() {
                   {active.level}
                 </span>
               </div>
-              {/* Score bar */}
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-xs" style={{ color: "#94A3B8" }}>Score: {active.score}%</span>
-                  <span className="text-xs" style={{ color: "#94A3B8" }}>Class avg: 65%</span>
+                  <span className="text-xs" style={{ color: "#94A3B8" }}>{t("score", { value: active.score })}</span>
+                  <span className="text-xs" style={{ color: "#94A3B8" }}>{t("class_avg", { value: 65 })}</span>
                 </div>
                 <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-500"
@@ -178,7 +193,7 @@ export function ParentProgress() {
 
             {/* Teacher comment */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>TEACHER'S COMMENT — MS. THOMPSON</p>
+              <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>{t("teacher_comment_label")}</p>
               <p className="text-sm" style={{ color: "#374151", lineHeight: "1.7", fontStyle: "italic" }}>
                 "{active.teacherComment}"
               </p>
@@ -188,7 +203,7 @@ export function ParentProgress() {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Info size={14} style={{ color: "#2563EB" }} />
-                <p className="text-xs" style={{ fontWeight: 600, color: "#2563EB" }}>AUSTRALIAN CURRICULUM STANDARD</p>
+                <p className="text-xs" style={{ fontWeight: 600, color: "#2563EB" }}>{t("curriculum_label")}</p>
               </div>
               <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{active.curriculumRef}</p>
             </div>
@@ -196,7 +211,7 @@ export function ParentProgress() {
             {/* Strengths & weak areas */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
               <div className="mb-3">
-                <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#10B981" }}>STRENGTHS</p>
+                <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#10B981" }}>{t("strengths")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {active.strengths.map(s => (
                     <span key={s} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: "#D1FAE5", color: "#065F46" }}>
@@ -206,7 +221,7 @@ export function ParentProgress() {
                 </div>
               </div>
               <div>
-                <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#F59E0B" }}>AREAS FOR IMPROVEMENT</p>
+                <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#F59E0B" }}>{t("improvements")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {active.weakAreas.map(w => (
                     <span key={w} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: "#FEF3C7", color: "#92400E" }}>
@@ -226,8 +241,8 @@ export function ParentProgress() {
                   <Sparkles size={15} style={{ color: "#2563EB" }} />
                 </div>
                 <div>
-                  <p style={{ fontWeight: 600, color: "#1E293B" }}>AI Home Learning Activities</p>
-                  <p className="text-xs" style={{ color: "#64748B" }}>Personalised for Noah · {active.name}</p>
+                  <p style={{ fontWeight: 600, color: "#1E293B" }}>{t("ai_activities_title")}</p>
+                  <p className="text-xs" style={{ color: "#64748B" }}>{t("ai_activities_subtitle", { firstName: activeChild.firstName, subject: active.name })}</p>
                 </div>
               </div>
 
@@ -242,24 +257,15 @@ export function ParentProgress() {
                 ))}
               </div>
 
-              {/* Confidence indicator */}
               <div className="flex items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: "#D1FAE5", border: "1px solid #A7F3D0" }}>
                 <CheckCircle size={14} style={{ color: "#10B981" }} />
-                <p className="text-xs" style={{ color: "#065F46", fontWeight: 500 }}>
-                  High confidence · Approved by Ms. Thompson
-                </p>
+                <p className="text-xs" style={{ color: "#065F46", fontWeight: 500 }}>{t("approved")}</p>
               </div>
 
               <div className="mt-4 p-4 rounded-xl" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
-                <p className="text-xs mb-1" style={{ fontWeight: 600, color: "#2563EB" }}>
-                  🎯 WEEKLY GOAL
-                </p>
+                <p className="text-xs mb-1" style={{ fontWeight: 600, color: "#2563EB" }}>{t("weekly_goal")}</p>
                 <p className="text-sm" style={{ color: "#1E40AF" }}>
-                  {active.name === "English"
-                    ? "Read together for 15 minutes every evening this week. Ask Noah to tell you what happened in the story!"
-                    : active.name === "Mathematics"
-                    ? "Practice the 6 and 7 times tables together. Try making it into a game or use the Times Tables Rockstars app!"
-                    : "Ask Noah to explain one thing he learned in Science this week. Encouraging teaching is a great way to reinforce learning!"}
+                  {t(weeklyGoalKey, { firstName: activeChild.firstName, pronoun: "they", subject: active.name })}
                 </p>
               </div>
             </div>

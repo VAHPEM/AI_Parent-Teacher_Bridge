@@ -1,0 +1,12 @@
+{
+  "portal_label": "Parent Portal",
+  "my_children": "MY CHILDREN",
+  "nav": {
+    "home": "Home",
+    "progress": "Progress & Grades",
+    "activities": "Learning Activities",
+    "ai_assistant": "AI Assistant",
+    "ask_teacher": "Ask a Teacher",
+    "settings": "Settings"
+  }
+}

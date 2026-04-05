@@ -1,0 +1,32 @@
+{
+  "title": "शिक्षक से पूछें",
+  "subtitle": "{{firstName}} के शिक्षकों से प्रश्न पूछें — वे सीधे जवाब देंगे। आप कभी भी अनुसरण कर सकते हैं।",
+  "new_question_btn": "नया प्रश्न",
+  "new_question_title": "नया प्रश्न पूछें",
+  "subject_label": "विषय / टॉपिक",
+  "subject_placeholder": "जैसे: इस टर्म {{firstName}} की पढ़ाई की प्रगति",
+  "category_label": "श्रेणी",
+  "question_label": "आपका प्रश्न",
+  "question_placeholder": "यहाँ अपना प्रश्न लिखें...",
+  "cancel": "रद्द करें",
+  "send_to_teacher": "शिक्षक को भेजें",
+  "sending": "भेजा जा रहा है...",
+  "awaiting_reply": "जवाब का इंतजार",
+  "answered": "उत्तर दिया गया",
+  "pending_notice": "आपका प्रश्न {{teacher}} को भेज दिया गया है। वे आमतौर पर 24 घंटे के भीतर जवाब देते हैं।",
+  "follow_up_label": "कोई अनुवर्ती प्रश्न है?",
+  "add_context_label": "अधिक संदर्भ जोड़ें:",
+  "follow_up_placeholder": "अनुवर्ती प्रश्न पूछें...",
+  "add_details_placeholder": "अपने प्रश्न में अधिक विवरण जोड़ें...",
+  "message_count_one": "{{count}} संदेश",
+  "message_count_other": "{{count}} संदेश",
+  "you_prefix": "आप: ",
+  "no_questions_title": "अभी तक कोई प्रश्न नहीं",
+  "no_questions_subtitle": "{{firstName}} के शिक्षक से प्रश्न पूछें और उनका जवाब यहाँ दिखेगा।",
+  "ask_teacher_btn": "शिक्षक से पूछें",
+  "priority": {
+    "red": "स्वास्थ्य / सुरक्षा",
+    "orange": "शैक्षणिक चिंता",
+    "yellow": "सामान्य"
+  }
+}

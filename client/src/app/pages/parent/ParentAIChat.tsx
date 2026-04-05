@@ -1,14 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, AlertCircle, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
-
-const suggestedQuestions = [
-  "How is Noah going in Maths?",
-  "What home activities should I do with Noah?",
-  "How is his English going?",
-  "How is his Science going?",
-];
 
 interface Message {
   id: number;
@@ -19,8 +13,10 @@ interface Message {
 
 export function ParentAIChat() {
   const { activeChild: student } = useParentChild();
+  const { t } = useTranslation("ai-chat");
+  const { t: tCommon } = useTranslation("common");
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, from: "ai", content: "Hi! I'm the EduTrack AI assistant. I can help you with your child's learning progress, suggest home activities, or explain assessment results. What would you like to know?", timestamp: "Just now" }
+    { id: 1, from: "ai", content: t("greeting"), timestamp: tCommon("just_now") }
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -33,15 +29,15 @@ export function ParentAIChat() {
   const handleSend = (text?: string) => {
     const question = text || input;
     if (!question.trim() || !student) return;
-    setMessages(prev => [...prev, { id: prev.length + 1, from: "user", content: question, timestamp: "Just now" }]);
+    setMessages(prev => [...prev, { id: prev.length + 1, from: "user", content: question, timestamp: tCommon("just_now") }]);
     setInput("");
     setTyping(true);
     api.post<{reply: string}>(`/parent/chat/${student.id}`, { message: question })
       .then(res => {
-        setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: res.reply, timestamp: "Just now" }]);
+        setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: res.reply, timestamp: tCommon("just_now") }]);
       })
       .catch(() => {
-        setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: "Sorry, I encountered an error.", timestamp: "Just now" }]);
+        setMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: t("error_message"), timestamp: tCommon("just_now") }]);
       })
       .finally(() => setTyping(false));
   };
@@ -59,10 +55,10 @@ export function ParentAIChat() {
               <Bot size={20} color="white" />
             </div>
             <div>
-              <h1 className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>EduTrack AI Assistant</h1>
+              <h1 className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>{t("title")}</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                <p className="text-xs" style={{ color: "#64748B" }}>Always available · Responds instantly</p>
+                <p className="text-xs" style={{ color: "#64748B" }}>{t("status")}</p>
               </div>
             </div>
           </div>
@@ -71,23 +67,22 @@ export function ParentAIChat() {
         {/* Info banner */}
         <div className="mx-6 mt-4 p-3 rounded-xl flex items-start gap-2 shrink-0" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
           <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
-          <p className="text-xs" style={{ color: "#1E40AF", lineHeight: "1.6" }}>
-            The AI can answer questions about {student.firstName}'s learning progress, grades, and home activities. For sensitive matters (wellbeing, behaviour), use <strong>Ask a Teacher</strong> so {student.firstName === 'Ella' ? 'her' : 'his'} teacher can respond personally.
+          <p className="text-xs" style={{ color: "#1E40AF", lineHeight: "1.6" }} dangerouslySetInnerHTML={{ __html: t("info_banner", { firstName: student.firstName, pronoun: student.firstName === 'Ella' ? 'her' : 'his' }) }}>
           </p>
         </div>
 
         {/* Suggested questions */}
         <div className="px-6 pt-4 shrink-0">
-          <p className="text-xs mb-2" style={{ color: "#94A3B8", fontWeight: 500, letterSpacing: "0.05em" }}>SUGGESTED QUESTIONS</p>
+          <p className="text-xs mb-2" style={{ color: "#94A3B8", fontWeight: 500, letterSpacing: "0.05em" }}>{t("suggested_label")}</p>
           <div className="flex flex-wrap gap-2">
-            {suggestedQuestions.map(q => (
+            {(t("suggested_questions", { returnObjects: true, firstName: student.firstName, pronoun: student.firstName === 'Ella' ? 'her' : 'his' }) as string[]).map(q => (
               <button
                 key={q}
-                onClick={() => handleSend(q.replace(/Noah/g, student.firstName).replace(/\bhis\b/g, student.firstName === 'Ella' ? 'her' : 'his'))}
+                onClick={() => handleSend(q)}
                 className="text-xs px-3 py-1.5 rounded-full border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
                 style={{ color: "#64748B" }}
               >
-                {q.replace(/Noah/g, student.firstName).replace(/\bhis\b/g, student.firstName === 'Ella' ? 'her' : 'his')}
+                {q}
               </button>
             ))}
           </div>
@@ -114,7 +109,7 @@ export function ParentAIChat() {
                     boxShadow: msg.from === "ai" ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
                   }}
                 >
-                  {msg.content.replace(/Noah/g, student.firstName).replace(/\bhis\b/g, student.firstName === 'Ella' ? 'her' : 'his').replace(/\bHis\b/g, student.firstName === 'Ella' ? 'Her' : 'His')}
+                  {msg.content}
                 </div>
                 <span className="text-xs mt-1" style={{ color: "#94A3B8" }}>{msg.timestamp}</span>
               </div>
@@ -153,7 +148,7 @@ export function ParentAIChat() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSend()}
-                placeholder={`Ask the AI about ${student.firstName}'s progress...`}
+                placeholder={t("input_placeholder", { firstName: student.firstName })}
                 className="flex-1 text-sm bg-transparent focus:outline-none"
                 style={{ color: "#1E293B" }}
               />

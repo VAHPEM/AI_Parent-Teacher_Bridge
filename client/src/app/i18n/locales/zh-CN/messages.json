@@ -1,0 +1,32 @@
+{
+  "conversations": "对话",
+  "ai_assistant": "EduTrack AI助手",
+  "ask_about": "询问有关{{firstName}}的任何问题",
+  "teachers_label": "{{firstName}}的老师",
+  "always_available": "随时可用",
+  "suggested_questions": "建议问题",
+  "info_banner": "AI可以回答有关{{firstName}}学习进度、作业和活动的问题。敏感问题将转发给{{firstName}}的老师。",
+  "ai_input_placeholder": "询问AI关于{{firstName}}的情况...",
+  "responds_instantly": "随时可用 · 即时回复",
+  "ai_draft": "AI起草",
+  "quick_topics": "快速话题",
+  "quick_topics_label": "快速话题",
+  "select_teacher": "选择老师查看消息",
+  "message_placeholder": "发消息给{{name}}...",
+  "send": "发送",
+  "sending": "发送中...",
+  "sent": "已发送 ✓",
+  "quick_question_templates": [
+    "{{firstName}}的数学怎么样？",
+    "我应该在家和{{firstName}}做哪些活动？",
+    "{{firstName}}的英语怎么样？",
+    "{{firstName}}应该参加拓展课吗？"
+  ],
+  "quick_topics_list": [
+    "{{firstName}}的整体进度如何？",
+    "我对{{firstName}}的身心健康有些担忧",
+    "我们可以安排一次家长会吗？",
+    "关于考试成绩的问题",
+    "关于家庭学习活动的反馈"
+  ]
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Send, Clock, CheckCircle, ChevronDown, ChevronUp, Plus, X, Shield, BookOpen, Lightbulb, MessageSquare } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
 import { DEMO_PARENT_ID } from "../../lib/config";
@@ -23,7 +24,9 @@ type Thread = {
 };
 
 export function ParentQuestions() {
-  const { activeChild: student , parent} = useParentChild();
+  const { activeChild: student, parent } = useParentChild();
+  const { t } = useTranslation("questions");
+  const { t: tCommon } = useTranslation("common");
   const [threads, setThreads] = useState<Thread[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [followUps, setFollowUps] = useState<Record<number, string>>({});
@@ -64,7 +67,7 @@ export function ParentQuestions() {
     api.post(`/parent/questions/${threadId}/followup?parent_id=${DEMO_PARENT_ID}`, { content: text }).then(() => {
       setThreads(prev => prev.map(t =>
         t.id === threadId
-          ? { ...t, status: "pending", messages: [...t.messages, { id: Date.now(), from: "parent", content: text, timestamp: "Just now" }] }
+          ? { ...t, status: "pending", messages: [...t.messages, { id: Date.now(), from: "parent", content: text, timestamp: tCommon("just_now") }] }
           : t
       ));
       setFollowUps(prev => ({ ...prev, [threadId]: "" }));
@@ -84,8 +87,8 @@ export function ParentQuestions() {
           teacherColor: "#2563EB",
           status: "pending",
           priority: newQuestion.priority,
-          createdAt: "Just now",
-          messages: [{ id: `q-${res.question_id}`, from: "parent", content: newQuestion.content, timestamp: "Just now" }],
+          createdAt: tCommon("just_now"),
+          messages: [{ id: `q-${res.question_id}`, from: "parent", content: newQuestion.content, timestamp: tCommon("just_now") }],
         };
         setThreads(prev => [newThread, ...prev]);
         setNewQuestion({ subject: "", content: "", priority: "orange" });
@@ -105,9 +108,9 @@ export function ParentQuestions() {
         {/* Header */}
         <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>Ask a Teacher</h1>
+            <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>{t("title")}</h1>
             <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
-              Post questions to {student.firstName}'s teachers — they'll respond directly. You can follow up any time.
+              {t("subtitle", { firstName: student.firstName })}
             </p>
           </div>
           <button
@@ -116,7 +119,7 @@ export function ParentQuestions() {
             style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
           >
             <Plus size={16} />
-            New Question
+            {t("new_question_btn")}
           </button>
         </div>
 
@@ -124,7 +127,7 @@ export function ParentQuestions() {
         {showNewForm && (
           <div className="mb-6 bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>Ask a New Question</h2>
+              <h2 className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>{t("new_question_title")}</h2>
               <button onClick={() => setShowNewForm(false)}>
                 <X size={18} style={{ color: "#94A3B8" }} />
               </button>
@@ -132,19 +135,19 @@ export function ParentQuestions() {
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>Subject / Topic</label>
+                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>{t("subject_label")}</label>
                 <input
                   type="text"
                   value={newQuestion.subject}
                   onChange={e => setNewQuestion(p => ({ ...p, subject: e.target.value }))}
-                  placeholder={`e.g. ${student.firstName}'s reading progress this term`}
+                  placeholder={t("subject_placeholder", { firstName: student.firstName })}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                   style={{ backgroundColor: "#F8FAFC", color: "#1E293B" }}
                 />
               </div>
 
               <div>
-                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>Category</label>
+                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>{t("category_label")}</label>
                 <div className="flex flex-wrap gap-2">
                   {(Object.entries(priorityConfig) as [string, typeof priorityConfig[string]][]).map(([key, cfg]) => (
                     <button
@@ -166,11 +169,11 @@ export function ParentQuestions() {
               </div>
 
               <div>
-                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>Your Question</label>
+                <label className="text-xs mb-1 block" style={{ fontWeight: 500, color: "#64748B" }}>{t("question_label")}</label>
                 <textarea
                   value={newQuestion.content}
                   onChange={e => setNewQuestion(p => ({ ...p, content: e.target.value }))}
-                  placeholder="Write your question here..."
+                  placeholder={t("question_placeholder")}
                   rows={4}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
                   style={{ backgroundColor: "#F8FAFC", color: "#1E293B" }}
@@ -183,7 +186,7 @@ export function ParentQuestions() {
                   className="px-4 py-2 rounded-xl text-sm border border-slate-200 hover:bg-slate-50 transition-colors"
                   style={{ color: "#64748B" }}
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={handleNewQuestion}
@@ -192,7 +195,7 @@ export function ParentQuestions() {
                   style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
                 >
                   <Send size={14} />
-                  {submitting ? "Sending..." : "Send to Teacher"}
+                  {submitting ? t("sending") : t("send_to_teacher")}
                 </button>
               </div>
             </div>
@@ -225,17 +228,17 @@ export function ParentQuestions() {
                       <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>{thread.subject}</p>
                       {thread.status === "pending" && (
                         <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: "#FEF3C7", color: "#D97706", fontWeight: 500 }}>
-                          <Clock size={10} />Awaiting reply
+                          <Clock size={10} />{t("awaiting_reply")}
                         </span>
                       )}
                       {thread.status === "answered" && (
                         <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: "#D1FAE5", color: "#065F46", fontWeight: 500 }}>
-                          <CheckCircle size={10} />Answered
+                          <CheckCircle size={10} />{t("answered")}
                         </span>
                       )}
                       <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: priority.bg, color: priority.color, fontWeight: 500 }}>
                         <span style={{ color: priority.color }}>{priority.icon}</span>
-                        {priority.label}
+                        {t(`priority.${thread.priority}`)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -243,11 +246,11 @@ export function ParentQuestions() {
                       <span style={{ color: "#CBD5E1" }}>·</span>
                       <p className="text-xs" style={{ color: "#94A3B8" }}>{thread.createdAt}</p>
                       <span style={{ color: "#CBD5E1" }}>·</span>
-                      <p className="text-xs" style={{ color: "#94A3B8" }}>{thread.messages.length} message{thread.messages.length !== 1 ? "s" : ""}</p>
+                      <p className="text-xs" style={{ color: "#94A3B8" }}>{t("message_count", { count: thread.messages.length })}</p>
                     </div>
                     {!isExpanded && (
                       <p className="text-xs mt-1 truncate" style={{ color: "#64748B" }}>
-                        {lastMsg.from === "teacher" ? `${thread.teacherInitials}: ` : "You: "}{lastMsg.content}
+                        {lastMsg.from === "teacher" ? `${thread.teacherInitials}: ` : t("you_prefix")}{lastMsg.content}
                       </p>
                     )}
                   </div>
@@ -275,10 +278,10 @@ export function ParentQuestions() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs" style={{ fontWeight: 600, color: "#1E293B" }}>
-                                {msg.from === "teacher" ? thread.teacher : `${parent?.name} (You)`}
+                                {msg.from === "teacher" ? thread.teacher : `${parent?.name} (${tCommon("you")})`}
                               </span>
                               {idx === 0 && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F1F5F9", color: "#94A3B8" }}>Original question</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F1F5F9", color: "#94A3B8" }}>{tCommon("original_question")}</span>
                               )}
                               <span className="text-xs" style={{ color: "#94A3B8" }}>{msg.timestamp}</span>
                             </div>
@@ -302,7 +305,7 @@ export function ParentQuestions() {
                         <div className="flex items-center gap-2 py-2 px-3 rounded-xl" style={{ backgroundColor: "#FFFBEB", border: "1px solid #FDE68A" }}>
                           <Clock size={13} style={{ color: "#D97706" }} />
                           <p className="text-xs" style={{ color: "#92400E" }}>
-                            Your question has been sent to {thread.teacher}. They usually respond within 24 hours.
+                            {t("pending_notice", { teacher: thread.teacher })}
                           </p>
                         </div>
                       )}
@@ -312,13 +315,13 @@ export function ParentQuestions() {
                     <div className="px-5 pb-4 border-t border-slate-100 pt-4">
                       <p className="text-xs mb-2" style={{ fontWeight: 500, color: "#64748B" }}>
                         <MessageSquare size={12} className="inline mr-1" />
-                        {thread.status === "answered" ? "Have a follow-up question?" : "Add more context:"}
+                        {thread.status === "answered" ? t("follow_up_label") : t("add_context_label")}
                       </p>
                       <div className="flex gap-2">
                         <textarea
                           value={followUps[thread.id] || ""}
                           onChange={e => setFollowUps(prev => ({ ...prev, [thread.id]: e.target.value }))}
-                          placeholder={thread.status === "answered" ? "Ask a follow-up question..." : "Add more details to your question..."}
+                          placeholder={thread.status === "answered" ? t("follow_up_placeholder") : t("add_details_placeholder")}
                           rows={2}
                           className="flex-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
                           style={{ backgroundColor: "#F8FAFC", color: "#1E293B" }}
@@ -331,7 +334,7 @@ export function ParentQuestions() {
                           style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
                         >
                           <Send size={14} />
-                          Send
+                          {tCommon("send")}
                         </button>
                       </div>
                     </div>
@@ -347,14 +350,14 @@ export function ParentQuestions() {
             <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "#F1F5F9" }}>
               <MessageSquare size={28} style={{ color: "#94A3B8" }} />
             </div>
-            <p style={{ fontWeight: 600, color: "#1E293B" }}>No questions yet</p>
-            <p className="text-sm mt-1 mb-4" style={{ color: "#94A3B8" }}>Ask {student.firstName}'s teacher a question and they'll respond here.</p>
+            <p style={{ fontWeight: 600, color: "#1E293B" }}>{t("no_questions_title")}</p>
+            <p className="text-sm mt-1 mb-4" style={{ color: "#94A3B8" }}>{t("no_questions_subtitle", { firstName: student.firstName })}</p>
             <button
               onClick={() => setShowNewForm(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all mx-auto"
               style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
             >
-              <Plus size={16} />Ask a Teacher
+              <Plus size={16} />{t("ask_teacher_btn")}
             </button>
           </div>
         )}

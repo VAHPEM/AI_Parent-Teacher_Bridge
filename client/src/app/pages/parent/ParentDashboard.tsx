@@ -4,6 +4,7 @@ import {
   TrendingUp, TrendingDown, Minus, BookOpen, MessageSquare,
   ArrowRight, Bell, Sparkles, Calendar
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
 
@@ -32,6 +33,7 @@ interface DashboardData {
 
 export function ParentDashboard() {
   const { activeChild: student } = useParentChild();
+  const { t } = useTranslation("dashboard");
   const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
@@ -41,9 +43,15 @@ export function ParentDashboard() {
 
   if (!student || !data) return (
     <div className="flex items-center justify-center h-64">
-      <p className="text-sm" style={{ color: "#94A3B8" }}>Loading...</p>
+      <p className="text-sm" style={{ color: "#94A3B8" }}>{t("loading", { ns: "common" })}</p>
     </div>
   );
+
+  const quickActions = [
+    { labelKey: "actions.progress", to: "/parent/progress", color: "#10B981", bg: "#ECFDF5" },
+    { labelKey: "actions.activities", to: "/parent/activities", color: "#2563EB", bg: "#EFF6FF" },
+    { labelKey: "actions.messages", to: "/parent/messages", color: "#8B5CF6", bg: "#EDE9FE" },
+  ];
 
   return (
     <>
@@ -53,10 +61,10 @@ export function ParentDashboard() {
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
               <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1E293B" }}>
-                Good afternoon, Sarah! 👋
+                {t("greeting", { name: "Sarah" })}
               </h1>
               <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
-                Here's {student.firstName}'s latest progress report for Term 2, Week 8
+                {t("subtitle", { firstName: student.firstName, term: 2, week: 8 })}
               </p>
             </div>
             <Link
@@ -65,7 +73,7 @@ export function ParentDashboard() {
               style={{ backgroundColor: "#10B981", fontWeight: 600 }}
             >
               <MessageSquare size={15} />
-              Ask {student.teacher}
+              {t("ask_teacher_btn", { teacher: student.teacher })}
             </Link>
           </div>
         </div>
@@ -84,15 +92,15 @@ export function ParentDashboard() {
             <div className="flex gap-4 flex-wrap">
               <div className="text-center">
                 <p style={{ fontSize: "1.5rem", fontWeight: 700, color: student.color }}>{student.overallGrade}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>Overall</p>
+                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>{t("overall")}</p>
               </div>
               <div className="text-center">
                 <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#10B981" }}>{student.attendance}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>Attendance</p>
+                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>{t("attendance")}</p>
               </div>
               <div className="text-center">
                 <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#2563EB" }}>{data.recentReports.length}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>Subjects</p>
+                <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>{t("subjects")}</p>
               </div>
             </div>
           </div>
@@ -101,7 +109,7 @@ export function ParentDashboard() {
           <div className="mt-4 p-3 rounded-xl flex items-start gap-2.5" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
             <Sparkles size={14} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
             <p className="text-sm" style={{ color: "#1E40AF" }}>
-              <span style={{ fontWeight: 600 }}>AI Insight:</span>{" "}
+              <span style={{ fontWeight: 600 }}>{t("ai_insight_label")}</span>{" "}
               {data.aiInsight}
             </p>
           </div>
@@ -111,9 +119,9 @@ export function ParentDashboard() {
           {/* Subject reports */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Latest Subject Reports</h2>
+              <h2 style={{ fontWeight: 600, color: "#1E293B" }}>{t("latest_reports")}</h2>
               <Link to="/parent/progress" className="text-sm flex items-center gap-1 hover:underline" style={{ color: "#10B981", fontWeight: 500 }}>
-                View all <ArrowRight size={14} />
+                {t("view_all")} <ArrowRight size={14} />
               </Link>
             </div>
             <div className="space-y-4">
@@ -128,7 +136,7 @@ export function ParentDashboard() {
                         </div>
                         <div>
                           <p style={{ fontWeight: 600, color: "#1E293B" }}>{report.subject}</p>
-                          <p className="text-xs" style={{ color: "#94A3B8" }}>Week 8, Term 2</p>
+                          <p className="text-xs" style={{ color: "#94A3B8" }}>{t("week_term", { term: 2, week: 8 })}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -142,13 +150,13 @@ export function ParentDashboard() {
                     </div>
 
                     <div className="mb-3 p-3 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-                      <p className="text-xs mb-0.5" style={{ fontWeight: 600, color: "#64748B" }}>TEACHER'S COMMENT</p>
+                      <p className="text-xs mb-0.5" style={{ fontWeight: 600, color: "#64748B" }}>{t("teacher_comment")}</p>
                       <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{report.comment}</p>
                     </div>
 
                     <div>
                       <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#10B981" }}>
-                        <Sparkles size={11} className="inline mr-1" />AI RECOMMENDED HOME ACTIVITIES
+                        <Sparkles size={11} className="inline mr-1" />{t("ai_recommended")}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {report.aiRecommendations.map((rec, i) => (
@@ -168,7 +176,7 @@ export function ParentDashboard() {
           <div className="space-y-5">
             {/* Recent activity */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <h2 className="mb-4" style={{ fontWeight: 600, color: "#1E293B" }}>Recent Activity</h2>
+              <h2 className="mb-4" style={{ fontWeight: 600, color: "#1E293B" }}>{t("recent_activity")}</h2>
               <div className="space-y-3">
                 {data.recentActivity.map((item, i) => {
                   const meta = activityMeta[item.type] ?? activityMeta.ai;
@@ -191,7 +199,7 @@ export function ParentDashboard() {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Calendar size={15} style={{ color: "#2563EB" }} />
-                <h2 style={{ fontWeight: 600, color: "#1E293B" }}>Upcoming</h2>
+                <h2 style={{ fontWeight: 600, color: "#1E293B" }}>{t("upcoming")}</h2>
               </div>
               <div className="space-y-3">
                 {data.upcomingEvents.map((event, i) => (
@@ -208,20 +216,16 @@ export function ParentDashboard() {
 
             {/* Quick actions */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <h2 className="mb-3" style={{ fontWeight: 600, color: "#1E293B" }}>Quick Actions</h2>
+              <h2 className="mb-3" style={{ fontWeight: 600, color: "#1E293B" }}>{t("quick_actions")}</h2>
               <div className="space-y-2">
-                {[
-                  { label: "View full progress report", to: "/parent/progress", color: "#10B981", bg: "#ECFDF5" },
-                  { label: "See learning activities", to: "/parent/activities", color: "#2563EB", bg: "#EFF6FF" },
-                  { label: "Send a message", to: "/parent/messages", color: "#8B5CF6", bg: "#EDE9FE" },
-                ].map(action => (
+                {quickActions.map(action => (
                   <Link
-                    key={action.label}
+                    key={action.labelKey}
                     to={action.to}
                     className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors hover:opacity-80"
                     style={{ backgroundColor: action.bg, color: action.color }}
                   >
-                    <span className="text-sm" style={{ fontWeight: 500 }}>{action.label}</span>
+                    <span className="text-sm" style={{ fontWeight: 500 }}>{t(action.labelKey)}</span>
                     <ArrowRight size={14} />
                   </Link>
                 ))}

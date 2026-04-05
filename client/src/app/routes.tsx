@@ -18,6 +18,7 @@ import { ParentQuestions } from "./pages/parent/ParentQuestions";
 import { ParentSettings } from "./pages/parent/ParentSettings";
 import { TeacherLayout } from "./components/layout/TeacherLayout";
 import { ParentLayout } from "./components/layout/ParentLayout";
+import { LanguageProvider } from "./context/LanguageContext";
 
 function NotFound() {
   return (
@@ -54,7 +55,7 @@ export const router = createBrowserRouter([
   // Parent Portal
   {
     path: "/parent",
-    element: <ParentLayout><Outlet /></ParentLayout>,
+    element: <LanguageProvider><ParentLayout><Outlet /></ParentLayout></LanguageProvider>,
     children: [
       { index: true, element: <ParentDashboard /> },
       { path: "progress", element: <ParentProgress /> },

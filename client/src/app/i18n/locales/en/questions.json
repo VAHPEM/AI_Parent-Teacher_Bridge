@@ -1,0 +1,32 @@
+{
+  "title": "Ask a Teacher",
+  "subtitle": "Post questions to {{firstName}}'s teachers — they'll respond directly. You can follow up any time.",
+  "new_question_btn": "New Question",
+  "new_question_title": "Ask a New Question",
+  "subject_label": "Subject / Topic",
+  "subject_placeholder": "e.g. {{firstName}}'s reading progress this term",
+  "category_label": "Category",
+  "question_label": "Your Question",
+  "question_placeholder": "Write your question here...",
+  "cancel": "Cancel",
+  "send_to_teacher": "Send to Teacher",
+  "sending": "Sending...",
+  "awaiting_reply": "Awaiting reply",
+  "answered": "Answered",
+  "pending_notice": "Your question has been sent to {{teacher}}. They usually respond within 24 hours.",
+  "follow_up_label": "Have a follow-up question?",
+  "add_context_label": "Add more context:",
+  "follow_up_placeholder": "Ask a follow-up question...",
+  "add_details_placeholder": "Add more details to your question...",
+  "message_count_one": "{{count}} message",
+  "message_count_other": "{{count}} messages",
+  "you_prefix": "You: ",
+  "no_questions_title": "No questions yet",
+  "no_questions_subtitle": "Ask {{firstName}}'s teacher a question and they'll respond here.",
+  "ask_teacher_btn": "Ask a Teacher",
+  "priority": {
+    "red": "Wellbeing / Safety",
+    "orange": "Academic Concern",
+    "yellow": "General"
+  }
+}
