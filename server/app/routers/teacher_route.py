@@ -48,12 +48,21 @@ def save_draft(payload: GradeEntrySubmit, db: Session = Depends(get_db)):
 
 
 @router.post("/grade-entry/submit")
-def submit_grades(payload: GradeEntrySubmit, db: Session = Depends(get_db)):
+def submit_grades(
+    payload: GradeEntrySubmit,
+    teacher_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    entries = [e.model_dump() for e in payload.entries]
     data = TeacherService.save_grade_entry(
         db, payload.class_id, payload.week, payload.term, payload.subject,
-        [e.model_dump() for e in payload.entries], "submitted"
+        entries, "submitted"
     )
-    return ApiResponse(body=data, message="success")
+    student_ids = list({int(e["student_id"]) for e in entries})
+    ai_reports = TeacherService.generate_ai_reports_after_grade_submit(
+        db, teacher_id, payload.class_id, payload.term, student_ids
+    )
+    return ApiResponse(body={**data, "ai_reports": ai_reports}, message="success")
 
 
 @router.get("/ai-analysis")
