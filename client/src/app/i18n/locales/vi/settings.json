@@ -1,0 +1,37 @@
+{
+  "title": "Cài đặt",
+  "subtitle": "Quản lý tài khoản và tùy chọn thông báo",
+  "profile_section": "Hồ sơ của bạn",
+  "guardian_of": "Phụ huynh / Người giám hộ của {{childName}}",
+  "fields": {
+    "full_name": "Họ và tên",
+    "email": "Email",
+    "phone": "Số điện thoại",
+    "relationship": "Mối quan hệ",
+    "relationship_value": "Phụ huynh / Người giám hộ"
+  },
+  "language_section": "Ngôn ngữ & Dịch thuật",
+  "language_label": "Ngôn ngữ ưa thích",
+  "language_hint": "Báo cáo do AI tạo và thông tin từ giáo viên sẽ được tự động dịch sang ngôn ngữ bạn chọn.",
+  "notifications_section": "Thông báo",
+  "notification_items": {
+    "newReport_label": "Báo cáo tiến độ mới",
+    "newReport_desc": "Nhận thông báo khi có báo cáo mới cho {{firstName}}",
+    "teacherReply_label": "Phản hồi từ giáo viên",
+    "teacherReply_desc": "Thông báo khi {{teacher}} phản hồi tin nhắn của bạn",
+    "weeklyDigest_label": "Email tổng kết hàng tuần",
+    "weeklyDigest_desc": "Tóm tắt tuần học của {{firstName}} gửi vào mỗi thứ Sáu",
+    "aiActivities_label": "Hoạt động học tập AI mới",
+    "aiActivities_desc": "Khi có hoạt động học tập tại nhà mới được tạo cho {{firstName}}"
+  },
+  "privacy_section": "Quyền riêng tư & Dữ liệu",
+  "privacy_text": "<strong>Dữ liệu của bạn được bảo mật.</strong> EduTrack AI chỉ sử dụng dữ liệu học tập của {{firstName}} để tạo các khuyến nghị học tập cá nhân hóa. Tất cả dữ liệu được lưu trữ an toàn và không bao giờ được chia sẻ với bên thứ ba. Các phản hồi AI được {{teacher}} xem xét trước khi gửi đến bạn.",
+  "save_btn": "Lưu cài đặt",
+  "saved_btn": "Đã lưu cài đặt ✓",
+  "languages": {
+    "en": "English",
+    "zh-CN": "简体中文 (Tiếng Trung giản thể)",
+    "hi": "हिन्दी (Tiếng Hindi)",
+    "vi": "Tiếng Việt"
+  }
+}

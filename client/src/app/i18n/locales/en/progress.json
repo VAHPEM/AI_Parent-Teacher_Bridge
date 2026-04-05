@@ -1,0 +1,22 @@
+{
+  "title": "{{firstName}}'s Progress & Grades",
+  "subtitle": "Term {{term}}, Week {{week}} · {{school}} · {{year}}",
+  "chart_title": "Score Trend — Weeks 5 to 8",
+  "chart_subtitle": "Assessment scores over the past 4 weeks",
+  "score": "Score: {{value}}%",
+  "class_avg": "Class avg: {{value}}%",
+  "teacher_comment_label": "TEACHER'S COMMENT — MS. THOMPSON",
+  "curriculum_label": "AUSTRALIAN CURRICULUM STANDARD",
+  "strengths": "STRENGTHS",
+  "improvements": "AREAS FOR IMPROVEMENT",
+  "ai_activities_title": "AI Home Learning Activities",
+  "ai_activities_subtitle": "Personalised for {{firstName}} · {{subject}}",
+  "approved": "High confidence · Approved by Ms. Thompson",
+  "weekly_goal": "🎯 WEEKLY GOAL",
+  "weekly_goals": {
+    "English": "Read together for 15 minutes every evening this week. Ask {{firstName}} to tell you what happened in the story!",
+    "Mathematics": "Practice the 6 and 7 times tables together. Try making it into a game or use the Times Tables Rockstars app!",
+    "default": "Ask {{firstName}} to explain one thing {{pronoun}} learned in {{subject}} this week. Encouraging teaching is a great way to reinforce learning!"
+  },
+  "no_data": "No progress data available yet."
+}

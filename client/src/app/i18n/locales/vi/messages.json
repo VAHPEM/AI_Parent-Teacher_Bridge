@@ -1,0 +1,32 @@
+{
+  "conversations": "Cuộc trò chuyện",
+  "ai_assistant": "Trợ lý AI EduTrack",
+  "ask_about": "Hỏi bất cứ điều gì về {{firstName}}",
+  "teachers_label": "GIÁO VIÊN CỦA {{firstName}}",
+  "always_available": "Luôn sẵn sàng",
+  "suggested_questions": "CÂU HỎI GỢI Ý",
+  "info_banner": "AI có thể trả lời câu hỏi về tiến độ học tập, bài tập về nhà và các hoạt động của {{firstName}}. Các câu hỏi nhạy cảm sẽ được chuyển đến giáo viên của {{pronoun}}.",
+  "ai_input_placeholder": "Hỏi AI về {{firstName}}...",
+  "responds_instantly": "Luôn sẵn sàng · Phản hồi ngay lập tức",
+  "ai_draft": "Bản nháp AI",
+  "quick_topics": "Chủ đề nhanh",
+  "quick_topics_label": "CHỦ ĐỀ NHANH",
+  "select_teacher": "Chọn giáo viên để xem tin nhắn",
+  "message_placeholder": "Nhắn tin cho {{name}}...",
+  "send": "Gửi",
+  "sending": "Đang gửi...",
+  "sent": "Đã gửi ✓",
+  "quick_question_templates": [
+    "{{firstName}} học Toán như thế nào?",
+    "Tôi nên làm hoạt động gì cùng {{firstName}} ở nhà?",
+    "Môn Tiếng Anh của {{pronoun}} đang thế nào?",
+    "{{firstName}} có nên học lớp nâng cao không?"
+  ],
+  "quick_topics_list": [
+    "{{firstName}} đang tiến bộ tổng thể như thế nào?",
+    "Tôi lo lắng về sức khỏe tinh thần của {{firstName}}",
+    "Chúng ta có thể sắp xếp buổi họp phụ huynh-giáo viên không?",
+    "Câu hỏi về điểm đánh giá",
+    "Phản hồi về các hoạt động học tập tại nhà"
+  ]
+}

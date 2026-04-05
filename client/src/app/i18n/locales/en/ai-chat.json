@@ -1,0 +1,15 @@
+{
+  "title": "EduTrack AI Assistant",
+  "status": "Always available · Responds instantly",
+  "info_banner": "The AI can answer questions about {{firstName}}'s learning progress, grades, and home activities. For sensitive matters (wellbeing, behaviour), use <strong>Ask a Teacher</strong> so {{pronoun}} teacher can respond personally.",
+  "suggested_label": "SUGGESTED QUESTIONS",
+  "input_placeholder": "Ask the AI about {{firstName}}'s progress...",
+  "error_message": "Sorry, I encountered an error.",
+  "greeting": "Hi! I'm the EduTrack AI assistant. I can help you with your child's learning progress, suggest home activities, or explain assessment results. What would you like to know?",
+  "suggested_questions": [
+    "How is {{firstName}} going in Maths?",
+    "What home activities should I do with {{firstName}}?",
+    "How is {{pronoun}} English going?",
+    "How is {{pronoun}} Science going?"
+  ]
+}

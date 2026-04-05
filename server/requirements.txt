@@ -8,4 +8,5 @@ python-dateutil
 # python-uuid
 pydantic~=2.12.5
 SQLAlchemy~=2.0.48
+deep_translator
 openai>=1.0.0

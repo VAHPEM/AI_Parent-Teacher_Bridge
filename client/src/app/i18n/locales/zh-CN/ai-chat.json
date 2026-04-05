@@ -1,0 +1,15 @@
+{
+  "title": "EduTrack AI助手",
+  "status": "随时可用 · 即时回复",
+  "info_banner": "AI可以回答有关{{firstName}}学习进度、成绩和家庭活动的问题。对于敏感事项（健康、行为），请使用<strong>咨询老师</strong>功能，让{{firstName}}的老师亲自回应。",
+  "suggested_label": "建议问题",
+  "input_placeholder": "询问AI关于{{firstName}}的进度...",
+  "error_message": "抱歉，遇到了错误。",
+  "greeting": "您好！我是EduTrack AI助手。我可以帮助您了解孩子的学习进度、建议家庭活动或解释评估结果。您想了解什么？",
+  "suggested_questions": [
+    "{{firstName}}的数学怎么样？",
+    "我应该在家和{{firstName}}做哪些活动？",
+    "{{firstName}}的英语怎么样？",
+    "{{firstName}}的科学怎么样？"
+  ]
+}

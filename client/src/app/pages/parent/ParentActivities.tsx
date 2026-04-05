@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { BookOpen, Calculator, FlaskConical, GraduationCap, Sparkles, CheckCircle, Star, Clock, Play, ChevronDown, ChevronUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { DEMO_PARENT_ID } from "../../lib/config";
 
@@ -18,11 +20,6 @@ const SUBJECT_ICONS: Record<string, React.ReactNode> = {
   "Science":     <FlaskConical size={18} />,
   "HASS":        <GraduationCap size={18} />,
   "Health & PE": <GraduationCap size={18} />,
-};
-
-const confidenceConfig: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  high:   { label: "Approved by Teacher", color: "#10B981", bg: "#D1FAE5", icon: <CheckCircle size={12} /> },
-  medium: { label: "AI Suggested",        color: "#3B82F6", bg: "#DBEAFE", icon: <Sparkles size={12} /> },
 };
 
 const difficultyConfig: Record<string, { color: string; bg: string }> = {
@@ -48,18 +45,23 @@ interface Activity {
 
 export function ParentActivities() {
   const { activeChild: student } = useParentChild();
+  const { t } = useTranslation("activities");
+  const { language } = useLanguage();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [filterSubject, setFilterSubject] = useState("All");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!student) return;
+    setLoading(true);
     api.get<Activity[]>(`/parent/activities/${student.id}?parent_id=${DEMO_PARENT_ID}`).then(data => {
       setActivities(data);
       setCompleted(new Set(data.filter(a => a.completed).map(a => a.id)));
+      setLoading(false);
     });
-  }, [student?.id]);
+  }, [student?.id, language]);
 
   const toggleComplete = (id: number) => {
     api.put(`/parent/activities/${id}/complete`).catch(() => {});
@@ -78,17 +80,29 @@ export function ParentActivities() {
     });
   };
 
-  const subjects = ["All", "English", "Mathematics", "Science"];
-  const filtered = filterSubject === "All" ? activities : activities.filter(a => a.subject === filterSubject);
+  if (!student || loading) return (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-sm" style={{ color: "#94A3B8" }}>{t("loading", { ns: "common" })}</p>
+    </div>
+  );
+
+  const subjects = [t("all", { ns: "common" }), "English", "Mathematics", "Science"];
+  const allLabel = t("all", { ns: "common" });
+  const filtered = filterSubject === allLabel ? activities : activities.filter(a => a.subject === filterSubject);
   const completedCount = activities.filter(a => completed.has(a.id)).length;
   const firstName = student?.firstName ?? "your child";
+
+  const confidenceConfig: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+    high:   { label: t("confidence.high"), color: "#10B981", bg: "#D1FAE5", icon: <CheckCircle size={12} /> },
+    medium: { label: t("confidence.medium"), color: "#3B82F6", bg: "#DBEAFE", icon: <Sparkles size={12} /> },
+  };
 
   return (
     <>
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
-          <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>Learning Activities for Home</h1>
-          <p className="mt-1 text-sm" style={{ color: "#64748B" }}>AI-generated activities personalised for {firstName} · Approved by Ms. Thompson</p>
+          <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>{t("title")}</h1>
+          <p className="mt-1 text-sm" style={{ color: "#64748B" }}>{t("subtitle", { firstName })}</p>
         </div>
 
         {/* Progress bar */}
@@ -96,9 +110,11 @@ export function ParentActivities() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Star size={16} style={{ color: "#F59E0B" }} />
-              <span style={{ fontWeight: 600, color: "#1E293B" }}>This Week's Progress</span>
+              <span style={{ fontWeight: 600, color: "#1E293B" }}>{t("week_progress")}</span>
             </div>
-            <span className="text-sm" style={{ color: "#64748B" }}>{completedCount} of {activities.length} activities completed</span>
+            <span className="text-sm" style={{ color: "#64748B" }}>
+              {t("progress_count", { completed: completedCount, total: activities.length })}
+            </span>
           </div>
           <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
             <div className="h-full rounded-full transition-all duration-500"
@@ -107,7 +123,7 @@ export function ParentActivities() {
           {activities.length > 0 && completedCount === activities.length && (
             <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: "#065F46" }}>
               <CheckCircle size={15} style={{ color: "#10B981" }} />
-              <span style={{ fontWeight: 500 }}>All activities completed this week! Excellent work, {firstName}! 🎉</span>
+              <span style={{ fontWeight: 500 }}>{t("all_done", { firstName })}</span>
             </div>
           )}
         </div>
@@ -146,7 +162,6 @@ export function ParentActivities() {
               <div key={activity.id}
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all"
                 style={{ opacity: isCompleted ? 0.8 : 1 }}>
-                {/* Header */}
                 <div className="p-5">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: sc.bg }}>
@@ -167,7 +182,7 @@ export function ParentActivities() {
                             </span>
                             {isCompleted && (
                               <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#D1FAE5", color: "#065F46", fontWeight: 500 }}>
-                                <CheckCircle size={11} />Done!
+                                <CheckCircle size={11} />{t("done_label")}
                               </span>
                             )}
                           </div>
@@ -190,7 +205,9 @@ export function ParentActivities() {
                               border: `1px solid ${isCompleted ? "#A7F3D0" : "#BFDBFE"}`
                             }}
                           >
-                            {isCompleted ? <><CheckCircle size={13} />Done</> : <><Play size={13} />Mark Done</>}
+                            {isCompleted
+                              ? <><CheckCircle size={13} />{t("done_label")}</>
+                              : <><Play size={13} />{t("mark_done")}</>}
                           </button>
                         </div>
                       </div>
@@ -204,16 +221,15 @@ export function ParentActivities() {
                     style={{ color: sc.color, fontWeight: 500 }}
                   >
                     {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    {isExpanded ? "Hide steps" : "Show steps & questions"}
+                    {isExpanded ? t("hide_steps") : t("show_steps")}
                   </button>
                 </div>
 
-                {/* Expanded content */}
                 {isExpanded && (
                   <div className="px-5 pb-5 border-t border-slate-100 pt-4">
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>HOW TO DO IT</p>
+                        <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>{t("how_to")}</p>
                         <ol className="space-y-2">
                           {(activity.steps ?? []).map((step: string, i: number) => (
                             <li key={i} className="flex items-start gap-2.5 text-xs" style={{ color: "#374151" }}>
@@ -227,7 +243,7 @@ export function ParentActivities() {
                       </div>
                       {questions.length > 0 && (
                         <div>
-                          <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>DISCUSSION QUESTIONS</p>
+                          <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>{t("discussion")}</p>
                           <div className="space-y-2">
                             {questions.map((q: string, i: number) => (
                               <div key={i} className="flex items-start gap-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}>
@@ -241,7 +257,7 @@ export function ParentActivities() {
                     </div>
                     <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: "#94A3B8" }}>
                       <Sparkles size={11} style={{ color: sc.color }} />
-                      <span>Australian Curriculum: {activity.curriculumRef}</span>
+                      <span>{t("curriculum_ref", { ref: activity.curriculumRef })}</span>
                     </div>
                   </div>
                 )}
