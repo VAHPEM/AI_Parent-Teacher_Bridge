@@ -9,6 +9,7 @@ from app.models.weekly_record import WeeklyRecord
 from app.models.weekly_observation import WeeklyObservation
 from app.models.ai_report import AIReport
 from app.models.activity import Activity
+from app.models.chat_session import ChatSession
 from app.models.message import ChatMessage
 from app.models.parent_question import ParentQuestion
 from app.models.question_reply import QuestionReply
@@ -557,3 +558,57 @@ class ParentService:
             parent.notifications = notifications
         db.commit()
         return {"message": "Saved"}
+
+    # ── AI Chat Sessions ──────────────────────────────────────────────
+    @staticmethod
+    def get_chat_sessions(db: Session, student_id: int, parent_id: int) -> list:
+        sessions = (
+            db.query(ChatSession)
+            .filter(ChatSession.student_id == student_id, ChatSession.parent_id == parent_id)
+            .order_by(desc(ChatSession.created_at))
+            .all()
+        )
+        return [
+            {"id": s.id, "title": s.title or "New Chat", "language": s.language, "created_at": str(s.created_at)}
+            for s in sessions
+        ]
+
+    @staticmethod
+    def create_chat_session(db: Session, student_id: int, parent_id: int, language: str) -> dict:
+        session = ChatSession(student_id=student_id, parent_id=parent_id, language=language)
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return {"id": session.id, "title": session.title or "New Chat", "language": session.language, "created_at": str(session.created_at)}
+
+    @staticmethod
+    def get_session_messages(db: Session, session_id: int) -> list:
+        msgs = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at)
+            .all()
+        )
+        return [{"id": m.id, "role": m.role, "content": m.content, "created_at": str(m.created_at)} for m in msgs]
+
+    @staticmethod
+    def delete_chat_session(db: Session, session_id: int, parent_id: int) -> None:
+        session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.parent_id == parent_id).first()
+        if not session:
+            raise AppException("Session not found", 404)
+        db.delete(session)
+        db.commit()
+
+    @staticmethod
+    def add_chat_message(db: Session, session_id: int, role: str, content: str) -> dict:
+        msg = ChatMessage(session_id=session_id, role=role, content=content)
+        db.add(msg)
+        # Update session title from first parent message
+        if role == "parent":
+            session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+            if session and not session.title:
+                session.title = content[:60]
+        db.commit()
+        db.refresh(msg)
+        return {"id": msg.id, "role": msg.role, "content": msg.content, "created_at": str(msg.created_at)}
+

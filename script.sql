@@ -4,6 +4,7 @@
 DROP TABLE IF EXISTS translation_cache CASCADE;
 DROP TABLE IF EXISTS parent_feedback CASCADE;
 DROP TABLE IF EXISTS chat_messages CASCADE;
+DROP TABLE IF EXISTS chat_sessions CASCADE;
 DROP TABLE IF EXISTS question_replies CASCADE;
 DROP TABLE IF EXISTS parent_questions CASCADE;
 DROP TABLE IF EXISTS activities CASCADE;
@@ -244,13 +245,25 @@ CREATE TABLE question_replies (
 
 
 -- =========================================================
--- CHAT_MESSAGES
--- parent <-> AI chat
+-- CHAT_SESSIONS
+-- One session = one conversation thread, tied to a language
 -- =========================================================
-CREATE TABLE chat_messages (
+CREATE TABLE chat_sessions (
     id SERIAL PRIMARY KEY,
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     parent_id INT NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+    title VARCHAR(255),
+    language VARCHAR(20) DEFAULT 'en',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================================
+-- CHAT_MESSAGES
+-- parent <-> AI chat, scoped to a session
+-- =========================================================
+CREATE TABLE chat_messages (
+    id SERIAL PRIMARY KEY,
+    session_id INT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL CHECK (role IN ('parent', 'ai')),
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -310,8 +323,9 @@ CREATE INDEX idx_parent_questions_parent_id ON parent_questions(parent_id);
 
 CREATE INDEX idx_question_replies_question_id ON question_replies(question_id);
 
-CREATE INDEX idx_chat_messages_student_id ON chat_messages(student_id);
-CREATE INDEX idx_chat_messages_parent_id ON chat_messages(parent_id);
+CREATE INDEX idx_chat_sessions_student_id ON chat_sessions(student_id);
+CREATE INDEX idx_chat_sessions_parent_id ON chat_sessions(parent_id);
+CREATE INDEX idx_chat_messages_session_id ON chat_messages(session_id);
 
 CREATE INDEX idx_parent_feedback_report_id ON parent_feedback(report_id);
 CREATE INDEX idx_parent_feedback_parent_id ON parent_feedback(parent_id);

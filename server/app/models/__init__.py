@@ -10,6 +10,7 @@ from app.models.weekly_record import WeeklyRecord
 from app.models.weekly_observation import WeeklyObservation
 from app.models.ai_report import AIReport
 from app.models.activity import Activity
+from app.models.chat_session import ChatSession
 from app.models.message import ChatMessage
 from app.models.parent_question import ParentQuestion
 from app.models.question_reply import QuestionReply
