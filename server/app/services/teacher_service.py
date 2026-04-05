@@ -268,6 +268,51 @@ class TeacherService:
         db.commit()
         return {"message": "Draft saved" if status == "draft" else "Submitted", "count": count}
 
+    @staticmethod
+    def generate_ai_reports_after_grade_submit(
+        db: Session,
+        teacher_id: int,
+        class_id: int,
+        term: str,
+        student_ids: list[int],
+    ) -> dict:
+        """
+        After grades are submitted, create CurricuLLM-backed ai_reports rows for affected students.
+        Failures are collected per student so grade save is never rolled back.
+        """
+        cls = db.query(Class).filter(Class.id == class_id).first()
+        if not cls or cls.teacher_id != teacher_id:
+            return {
+                "ok": False,
+                "reason": "Teacher does not own this class",
+                "created": [],
+                "skipped": [],
+            }
+
+        seen: set[int] = set()
+        created: list[dict] = []
+        skipped: list[dict] = []
+
+        for sid in student_ids:
+            if sid in seen:
+                continue
+            seen.add(sid)
+            stu = (
+                db.query(Student)
+                .filter(Student.id == sid, Student.class_id == class_id)
+                .first()
+            )
+            if not stu:
+                skipped.append({"student_id": sid, "reason": "Student not in class"})
+                continue
+            try:
+                row = create_ai_report_for_student(db, sid, term=term)
+                created.append({"student_id": sid, "report_id": row.id})
+            except AppException as e:
+                skipped.append({"student_id": sid, "reason": e.message})
+
+        return {"ok": True, "created": created, "skipped": skipped}
+
     # ── AI Analysis ───────────────────────────────────────────────────
     @staticmethod
     def _format_ai_report(report: AIReport, student: Student) -> dict:

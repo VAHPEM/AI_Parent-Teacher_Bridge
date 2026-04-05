@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { RefreshCcw, Save, Send, Info, CheckCircle, Search, X } from "lucide-react";
 import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 const subjects = ["English", "Mathematics", "Science", "HASS", "Health & PE"];
 const classes = ["Year 5A", "Year 5B", "Year 6A", "Year 6B"];
@@ -100,7 +101,7 @@ export function GradeEntry() {
       subject: activeSubject,
       entries: entries
     };
-    api.post("/teacher/grade-entry/submit", payload).then(() => {
+    api.post(`/teacher/grade-entry/submit?teacher_id=${DEMO_TEACHER_ID}`, payload).then(() => {
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 4000);
     });
