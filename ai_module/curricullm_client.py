@@ -4,6 +4,8 @@ from typing import Any
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from prompt_builder import build_prompt
+
 load_dotenv()
 
 
@@ -19,24 +21,26 @@ class CurricuLLMClient:
             base_url="https://api.curricullm.com/v1",
         )
 
-    def generate_parent_report(
+    def generate_ai_output(
         self,
         student_payload: dict[str, Any],
         rag_context: str | None = None,
     ) -> dict[str, Any]:
-        prompt = self._build_prompt(student_payload, rag_context)
+        prompt = build_prompt(student_payload, rag_context)
 
         response = self.client.chat.completions.create(
             model=self.model,
-            temperature=0.2,
+            temperature=0,
             messages=[
                 {
                     "role": "system",
                     "content": (
                         "You are an educational AI assistant. "
-                        "Generate a weekly parent progress report from student learning data. "
+                        "Generate a weekly parent progress report and learning activities "
+                        "from student learning data. "
                         "Use simple parent-friendly language. "
-                        "Return only valid JSON. Do not include markdown fences."
+                        "Return only valid JSON. "
+                        "Do not include markdown fences or extra explanation."
                     ),
                 },
                 {
@@ -49,57 +53,22 @@ class CurricuLLMClient:
         content = response.choices[0].message.content.strip()
 
         try:
-            return json.loads(content)
+            parsed = json.loads(content)
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f"CurricuLLM did not return valid JSON.\nRaw response:\n{content}"
             ) from exc
 
-    def _build_prompt(
-        self,
-        student_payload: dict[str, Any],
-        rag_context: str | None = None,
-    ) -> str:
-        student = student_payload["student"]
-        latest_week = student_payload["latest_week"]
-        records = student_payload["weekly_records"]
+        if not isinstance(parsed, dict):
+            raise ValueError(f"Expected top-level JSON object, got: {type(parsed)}")
 
-        prompt_body: dict[str, Any] = {
-            "task": "Create a weekly parent report for one student.",
-            "requirements": [
-                "Identify strengths based on positive performance or improvement trends.",
-                "Identify support areas based on low scores, repeated struggles, or concerning comments.",
-                "Write a short parent-friendly summary in simple language.",
-                "Suggest realistic parent actions. Do not assume the parent can teach advanced concepts.",
-                "Set risk_level as low, medium, or high.",
-                "Set needs_teacher_followup to true only when teacher intervention is likely needed."
-            ],
-            "return_json_schema": {
-                "student_id": "integer",
-                "week_number": "integer",
-                "strengths": ["string"],
-                "support_areas": ["string"],
-                "parent_summary": "string",
-                "parent_actions": ["string"],
-                "risk_level": "low | medium | high",
-                "needs_teacher_followup": "boolean"
-            },
-            "student_profile": {
-                "student_id": student["student_id"],
-                "student_name": student["student_name"],
-                "class_name": student["class_name"],
-                "grade_level": student["grade_level"],
-                "preferred_language": student["parent"]["preferred_language"],
-            },
-            "latest_week": latest_week,
-            "weekly_records": records,
-        }
+        if "report" not in parsed:
+            raise ValueError(f"AI output missing 'report'. Raw response:\n{content}")
 
-        if rag_context and rag_context.strip():
-            prompt_body["retrieved_knowledge_base_excerpts"] = rag_context.strip()
-            prompt_body["requirements"].append(
-                "When relevant, align parent-facing suggestions with the retrieved knowledge base excerpts. "
-                "Do not contradict the student's actual weekly_records; excerpts are guidance only."
-            )
+        if "activities" not in parsed:
+            raise ValueError(f"AI output missing 'activities'. Raw response:\n{content}")
 
-        return json.dumps(prompt_body, ensure_ascii=False, indent=2)
+        if not isinstance(parsed["activities"], list):
+            raise ValueError(f"'activities' must be a list. Raw response:\n{content}")
+
+        return parsed
