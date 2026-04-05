@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { BookOpen, Calculator, FlaskConical, GraduationCap, Sparkles, CheckCircle, Star, Clock, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 
 const SUBJECT_COLORS: Record<string, { color: string; bg: string }> = {
@@ -44,18 +45,22 @@ interface Activity {
 export function ParentActivities() {
   const { activeChild: student } = useParentChild();
   const { t } = useTranslation("activities");
+  const { language } = useLanguage();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [filterSubject, setFilterSubject] = useState("All");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!student) return;
+    setLoading(true);
     api.get<Activity[]>(`/parent/activities/${student.id}`).then(data => {
       setActivities(data);
       setCompleted(new Set(data.filter(a => a.completed).map(a => a.id)));
+      setLoading(false);
     });
-  }, [student?.id]);
+  }, [student?.id, language]);
 
   const toggleComplete = (id: number) => {
     api.put(`/parent/activities/${id}/complete`).catch(() => {});
@@ -73,6 +78,12 @@ export function ParentActivities() {
       return next;
     });
   };
+
+  if (!student || loading) return (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-sm" style={{ color: "#94A3B8" }}>{t("loading", { ns: "common" })}</p>
+    </div>
+  );
 
   const subjects = [t("all", { ns: "common" }), "English", "Mathematics", "Science"];
   const allLabel = t("all", { ns: "common" });

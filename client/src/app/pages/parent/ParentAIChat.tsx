@@ -3,6 +3,7 @@ import { Send, Bot, AlertCircle, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
 import { api } from "../../lib/api";
+import i18n from "i18next";
 
 interface Message {
   id: number;
@@ -21,6 +22,11 @@ export function ParentAIChat() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMessages([{ id: 1, from: "ai", content: t("greeting"), timestamp: tCommon("just_now") }]);
+    setInput("");
+  }, [i18n.language]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

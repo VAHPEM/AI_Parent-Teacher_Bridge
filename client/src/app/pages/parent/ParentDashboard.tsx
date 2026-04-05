@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 
 const gradeConfig: Record<string, { color: string; bg: string; label: string; border: string }> = {
@@ -34,12 +35,14 @@ interface DashboardData {
 export function ParentDashboard() {
   const { activeChild: student } = useParentChild();
   const { t } = useTranslation("dashboard");
+  const { language } = useLanguage();
   const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
     if (!student) return;
+    setData(null);
     api.get<DashboardData>(`/parent/dashboard/${student.id}`).then(setData);
-  }, [student?.id]);
+  }, [student?.id, language]);
 
   if (!student || !data) return (
     <div className="flex items-center justify-center h-64">

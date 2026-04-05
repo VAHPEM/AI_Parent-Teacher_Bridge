@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Send, Clock, CheckCircle, ChevronDown, ChevronUp, Plus, X, Shield, BookOpen, Lightbulb, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {useParentChild } from "../../context/ParentChildContext";
+import { useParentChild } from "../../context/ParentChildContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { DEMO_PARENT_ID } from "../../lib/config";
 
@@ -27,15 +28,18 @@ export function ParentQuestions() {
   const { activeChild: student, parent } = useParentChild();
   const { t } = useTranslation("questions");
   const { t: tCommon } = useTranslation("common");
+  const { language } = useLanguage();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [followUps, setFollowUps] = useState<Record<number, string>>({});
   const [showNewForm, setShowNewForm] = useState(false);
   const [newQuestion, setNewQuestion] = useState({ subject: "", content: "", priority: "orange" });
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!student) return;
+    setLoading(true);
     api.get<any[]>(`/parent/questions/${student.id}?parent_id=${DEMO_PARENT_ID}`).then((data) => {
       const mapped = data.map((q) => ({
         id: q.id,
@@ -58,8 +62,9 @@ export function ParentQuestions() {
       }));
       setThreads(mapped);
       if (mapped.length > 0) setExpandedId(mapped[0].id);
+      setLoading(false);
     });
-  }, [student?.id]);
+  }, [student?.id, language]);
 
   const handleFollowUp = (threadId: number) => {
     const text = followUps[threadId];
@@ -99,7 +104,11 @@ export function ParentQuestions() {
       .catch(() => setSubmitting(false));
   };
 
-  if (!student) return null;
+  if (!student || loading) return (
+    <div className="flex items-center justify-center h-64">
+      <p className="text-sm" style={{ color: "#94A3B8" }}>{tCommon("loading")}</p>
+    </div>
+  );
 
   return (
     <>

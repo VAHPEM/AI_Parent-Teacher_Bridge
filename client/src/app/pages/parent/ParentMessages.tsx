@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Mail, Clock, CheckCircle, Sparkles, ChevronDown, Bot, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { DEMO_PARENT_ID } from "../../lib/config";
 
@@ -23,6 +24,7 @@ type TeacherProfile = {
 export function ParentMessages() {
   const { activeChild: student } = useParentChild();
   const { t } = useTranslation("messages");
+  const { language } = useLanguage();
   const [view, setView] = useState<View>("teacher");
   const [selectedTeacherId, setSelectedTeacherId] = useState(-1);
   const [teacherData, setTeacherData] = useState<TeacherProfile[]>([]);
@@ -30,6 +32,7 @@ export function ParentMessages() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [aiMessages, setAiMessages] = useState([
     { id: 1, from: "ai", content: t("greeting_ai", { defaultValue: "Hi! I'm the EduTrack AI assistant. I can help you with your child's learning progress, suggest home activities, or explain assessment results. What would you like to know?" }), timestamp: t("just_now", { ns: "common" }) }
@@ -41,6 +44,7 @@ export function ParentMessages() {
 
   useEffect(() => {
     if (!student) return;
+    setLoading(true);
     api.get<any[]>(`/parent/messages/${student.id}?parent_id=${DEMO_PARENT_ID}`).then(data => {
       const mapped = data.map((t, idx) => ({
         id: t.teacherId,
@@ -62,8 +66,9 @@ export function ParentMessages() {
       }));
       setTeacherData(mapped);
       if (mapped.length > 0 && selectedTeacherId === -1) setSelectedTeacherId(mapped[0].id);
+      setLoading(false);
     });
-  }, [student?.id]);
+  }, [student?.id, language]);
 
   const selectedTeacher = teacherData.find(t => t.id === selectedTeacherId);
 
@@ -109,7 +114,11 @@ export function ParentMessages() {
 
   const quickTopics: string[] = t("quick_topics_list", { returnObjects: true, firstName: student?.firstName ?? "Noah" }) as string[];
 
-  if (!student) return null;
+  if (!student || loading) return (
+    <div className="flex items-center justify-center h-64 w-full">
+      <p className="text-sm" style={{ color: "#94A3B8" }}>{t("loading", { ns: "common" })}</p>
+    </div>
+  );
 
   return (
     <>

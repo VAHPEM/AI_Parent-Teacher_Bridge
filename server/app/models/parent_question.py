@@ -10,6 +10,8 @@ class ParentQuestion(Base):
     student_id            = Column(Integer, ForeignKey("students.id"), nullable=False)
     subject_id            = Column(Integer, ForeignKey("subjects.id"))
     content               = Column(Text, nullable=False)
+    original_content      = Column(Text, nullable=True)
+    original_language     = Column(String(10), nullable=True)
     priority              = Column(String(50), default="general")
     status                = Column(String(50), default="open")
     flag_reason           = Column(String(255))

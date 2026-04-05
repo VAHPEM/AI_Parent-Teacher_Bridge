@@ -1,6 +1,7 @@
 -- =========================================================
 -- DROP TABLES
 -- =========================================================
+DROP TABLE IF EXISTS translation_cache CASCADE;
 DROP TABLE IF EXISTS parent_feedback CASCADE;
 DROP TABLE IF EXISTS chat_messages CASCADE;
 DROP TABLE IF EXISTS question_replies CASCADE;
@@ -216,6 +217,8 @@ CREATE TABLE parent_questions (
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     subject_id INT REFERENCES subjects(id) ON DELETE SET NULL,
     content TEXT NOT NULL,
+    original_content TEXT,
+    original_language VARCHAR(10),
     priority VARCHAR(50),
     status VARCHAR(50) DEFAULT 'open',
     flag_reason VARCHAR(255),
@@ -234,6 +237,8 @@ CREATE TABLE question_replies (
     from_role VARCHAR(50) NOT NULL,
     from_id INT,
     content TEXT NOT NULL,
+    original_content TEXT,
+    original_language VARCHAR(10),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -740,3 +745,16 @@ GROUP BY
 ORDER BY
     st.id,
     a.week_number;
+
+
+-- =========================================================
+-- TRANSLATION CACHE
+-- =========================================================
+CREATE TABLE translation_cache (
+    id SERIAL PRIMARY KEY,
+    payload_hash VARCHAR(64) NOT NULL,
+    language VARCHAR(10) NOT NULL,
+    translated_payload TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_translation_cache_hash_lang ON translation_cache(payload_hash, language);

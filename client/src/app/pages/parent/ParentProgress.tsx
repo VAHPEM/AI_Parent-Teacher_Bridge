@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { useTranslation } from "react-i18next";
 import { useParentChild } from "../../context/ParentChildContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 
 const gradeConfig: Record<string, { color: string; bg: string; border: string }> = {

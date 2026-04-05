@@ -4,6 +4,7 @@ from app.db.database import get_db
 from app.dto.api_response import ApiResponse
 from app.services.parent_service import ParentService
 from app.schemas.parent import MessageCreate, ChatRequest, QuestionCreate, FollowUpCreate, SettingsUpdate
+from app.services.translation_service import TranslationService
 
 router = APIRouter(prefix="/parent", tags=["Parent"])
 
@@ -61,8 +62,11 @@ def send_message(student_id: int, payload: MessageCreate, parent_id: int = Query
 
 
 @router.post("/chat/{student_id}")
-def parent_chat(student_id: int, payload: ChatRequest, db: Session = Depends(get_db)):
-    data = {"reply": "I don't have enough data to answer that. Please ask the teacher directly.", "confidence": "low", "sources": []}
+def parent_chat(student_id: int, payload: ChatRequest, parent_id: int = Query(...), db: Session = Depends(get_db)):
+    pref_lang = ParentService._get_parent_language(db, parent_id)
+    ai_reply = "I don't have enough data to answer that. Please ask the teacher directly."
+    translated_reply = TranslationService.translate_from_english(ai_reply, pref_lang) if pref_lang != "en" else ai_reply
+    data = {"reply": translated_reply, "confidence": "low", "sources": []}
     return ApiResponse(body=data, message="success")
 
 
