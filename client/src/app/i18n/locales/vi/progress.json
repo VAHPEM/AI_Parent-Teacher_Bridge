@@ -1,0 +1,22 @@
+{
+  "title": "Tiến độ & Điểm số của {{firstName}}",
+  "subtitle": "Học kỳ {{term}}, Tuần {{week}} · {{school}} · {{year}}",
+  "chart_title": "Xu hướng điểm số — Tuần 5 đến 8",
+  "chart_subtitle": "Điểm đánh giá trong 4 tuần qua",
+  "score": "Điểm: {{value}}%",
+  "class_avg": "Trung bình lớp: {{value}}%",
+  "teacher_comment_label": "NHẬN XÉT CỦA GIÁO VIÊN — CÔ THOMPSON",
+  "curriculum_label": "CHUẨN CHƯƠNG TRÌNH ÚC",
+  "strengths": "ĐIỂM MẠNH",
+  "improvements": "CẦN CẢI THIỆN",
+  "ai_activities_title": "Hoạt động học tập tại nhà từ AI",
+  "ai_activities_subtitle": "Được cá nhân hóa cho {{firstName}} · {{subject}}",
+  "approved": "Độ tin cậy cao · Được cô Thompson phê duyệt",
+  "weekly_goal": "🎯 MỤC TIÊU TUẦN NÀY",
+  "weekly_goals": {
+    "English": "Đọc sách cùng nhau 15 phút mỗi tối. Hỏi {{firstName}} kể lại nội dung câu chuyện!",
+    "Mathematics": "Luyện bảng cửu chương 6 và 7 cùng nhau. Thử biến nó thành trò chơi!",
+    "default": "Hỏi {{firstName}} giải thích một điều {{pronoun}} đã học trong môn {{subject}} tuần này. Khuyến khích dạy lại là cách tốt để củng cố kiến thức!"
+  },
+  "no_data": "Chưa có dữ liệu tiến độ."
+}

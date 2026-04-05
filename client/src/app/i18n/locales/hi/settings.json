@@ -1,0 +1,36 @@
+{
+  "title": "सेटिंग्स",
+  "subtitle": "अपने खाते और अधिसूचना प्राथमिकताएँ प्रबंधित करें",
+  "profile_section": "आपकी प्रोफ़ाइल",
+  "guardian_of": "{{childName}} के अभिभावक / संरक्षक",
+  "fields": {
+    "full_name": "पूरा नाम",
+    "email": "ईमेल",
+    "phone": "फ़ोन",
+    "relationship": "संबंध",
+    "relationship_value": "अभिभावक / संरक्षक"
+  },
+  "language_section": "भाषा और अनुवाद",
+  "language_label": "पसंदीदा भाषा",
+  "language_hint": "AI द्वारा उत्पन्न रिपोर्ट और शिक्षक संचार आपकी पसंदीदा भाषा में स्वचालित रूप से अनुवादित होंगे।",
+  "notifications_section": "अधिसूचनाएँ",
+  "notification_items": {
+    "newReport_label": "नई प्रगति रिपोर्ट",
+    "newReport_desc": "जब {{firstName}} की नई रिपोर्ट तैयार हो तो सूचित करें",
+    "teacherReply_label": "शिक्षक का जवाब",
+    "teacherReply_desc": "जब {{teacher}} आपके संदेश का जवाब दे तो सूचना",
+    "weeklyDigest_label": "साप्ताहिक सारांश ईमेल",
+    "weeklyDigest_desc": "{{firstName}} के सप्ताह का सारांश हर शुक्रवार भेजा जाता है",
+    "aiActivities_label": "नई AI सीखने की गतिविधियाँ",
+    "aiActivities_desc": "जब {{firstName}} के लिए नई घरेलू गतिविधियाँ बनाई जाएँ तो सूचित करें"
+  },
+  "privacy_section": "गोपनीयता और डेटा",
+  "privacy_text": "<strong>आपका डेटा सुरक्षित है।</strong> EduTrack AI केवल {{firstName}} के शैक्षिक डेटा का उपयोग व्यक्तिगत सीखने की सिफारिशें उत्पन्न करने के लिए करता है। सभी डेटा सुरक्षित रूप से संग्रहीत है और कभी भी तृतीय पक्षों के साथ साझा नहीं किया जाता। AI जवाब आपको भेजे जाने से पहले {{teacher}} द्वारा समीक्षा किए जाते हैं।",
+  "save_btn": "सेटिंग्स सहेजें",
+  "saved_btn": "सेटिंग्स सहेजी गईं ✓",
+  "languages": {
+    "en": "English",
+    "zh-CN": "简体中文 (Simplified Chinese)",
+    "hi": "हिन्दी (Hindi)"
+  }
+}

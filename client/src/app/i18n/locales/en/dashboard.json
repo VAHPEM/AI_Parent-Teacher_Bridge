@@ -1,0 +1,22 @@
+{
+  "greeting": "Good afternoon, {{name}}! 👋",
+  "subtitle": "Here's {{firstName}}'s latest progress report for Term {{term}}, Week {{week}}",
+  "ask_teacher_btn": "Ask {{teacher}}",
+  "overall": "Overall",
+  "attendance": "Attendance",
+  "subjects": "Subjects",
+  "ai_insight_label": "AI Insight:",
+  "latest_reports": "Latest Subject Reports",
+  "view_all": "View all",
+  "week_term": "Week {{week}}, Term {{term}}",
+  "teacher_comment": "TEACHER'S COMMENT",
+  "ai_recommended": "AI RECOMMENDED HOME ACTIVITIES",
+  "recent_activity": "Recent Activity",
+  "upcoming": "Upcoming",
+  "quick_actions": "Quick Actions",
+  "actions": {
+    "progress": "View full progress report",
+    "activities": "See learning activities",
+    "messages": "Send a message"
+  }
+}

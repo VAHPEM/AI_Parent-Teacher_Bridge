@@ -1,0 +1,31 @@
+{
+  "loading": "Loading...",
+  "save": "Save",
+  "cancel": "Cancel",
+  "send": "Send",
+  "sending": "Sending...",
+  "sent": "Sent ✓",
+  "done": "Done",
+  "all": "All",
+  "you": "You",
+  "active": "Active",
+  "back_to_portal": "Back to Portal Select",
+  "parent_guardian": "Parent / Guardian",
+  "school": "Greenwood Primary School",
+  "term_week": "Term {{term}}, Week {{week}} · {{year}}",
+  "viewing": "Viewing:",
+  "no_data": "No data available.",
+  "always_available": "Always available",
+  "just_now": "Just now",
+  "original_question": "Original question",
+  "grade_labels": {
+    "above": "Above Expected",
+    "at": "At Expected",
+    "below": "Below Expected"
+  },
+  "trend": {
+    "improving": "Improving",
+    "declining": "Declining",
+    "stable": "Stable"
+  }
+}

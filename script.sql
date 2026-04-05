@@ -1,8 +1,10 @@
 -- =========================================================
 -- DROP TABLES
 -- =========================================================
+DROP TABLE IF EXISTS translation_cache CASCADE;
 DROP TABLE IF EXISTS parent_feedback CASCADE;
 DROP TABLE IF EXISTS chat_messages CASCADE;
+DROP TABLE IF EXISTS chat_sessions CASCADE;
 DROP TABLE IF EXISTS question_replies CASCADE;
 DROP TABLE IF EXISTS parent_questions CASCADE;
 DROP TABLE IF EXISTS activities CASCADE;
@@ -216,6 +218,8 @@ CREATE TABLE parent_questions (
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     subject_id INT REFERENCES subjects(id) ON DELETE SET NULL,
     content TEXT NOT NULL,
+    original_content TEXT,
+    original_language VARCHAR(10),
     priority VARCHAR(50),
     status VARCHAR(50) DEFAULT 'open',
     flag_reason VARCHAR(255),
@@ -234,18 +238,32 @@ CREATE TABLE question_replies (
     from_role VARCHAR(50) NOT NULL,
     from_id INT,
     content TEXT NOT NULL,
+    original_content TEXT,
+    original_language VARCHAR(10),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 
 -- =========================================================
--- CHAT_MESSAGES
--- parent <-> AI chat
+-- CHAT_SESSIONS
+-- One session = one conversation thread, tied to a language
 -- =========================================================
-CREATE TABLE chat_messages (
+CREATE TABLE chat_sessions (
     id SERIAL PRIMARY KEY,
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     parent_id INT NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+    title VARCHAR(255),
+    language VARCHAR(20) DEFAULT 'en',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================================
+-- CHAT_MESSAGES
+-- parent <-> AI chat, scoped to a session
+-- =========================================================
+CREATE TABLE chat_messages (
+    id SERIAL PRIMARY KEY,
+    session_id INT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL CHECK (role IN ('parent', 'ai')),
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -305,8 +323,9 @@ CREATE INDEX idx_parent_questions_parent_id ON parent_questions(parent_id);
 
 CREATE INDEX idx_question_replies_question_id ON question_replies(question_id);
 
-CREATE INDEX idx_chat_messages_student_id ON chat_messages(student_id);
-CREATE INDEX idx_chat_messages_parent_id ON chat_messages(parent_id);
+CREATE INDEX idx_chat_sessions_student_id ON chat_sessions(student_id);
+CREATE INDEX idx_chat_sessions_parent_id ON chat_sessions(parent_id);
+CREATE INDEX idx_chat_messages_session_id ON chat_messages(session_id);
 
 CREATE INDEX idx_parent_feedback_report_id ON parent_feedback(report_id);
 CREATE INDEX idx_parent_feedback_parent_id ON parent_feedback(parent_id);
@@ -740,3 +759,16 @@ GROUP BY
 ORDER BY
     st.id,
     a.week_number;
+
+
+-- =========================================================
+-- TRANSLATION CACHE
+-- =========================================================
+CREATE TABLE translation_cache (
+    id SERIAL PRIMARY KEY,
+    payload_hash VARCHAR(64) NOT NULL,
+    language VARCHAR(10) NOT NULL,
+    translated_payload TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_translation_cache_hash_lang ON translation_cache(payload_hash, language);

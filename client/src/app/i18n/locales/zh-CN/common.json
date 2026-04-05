@@ -1,0 +1,31 @@
+{
+  "loading": "加载中...",
+  "save": "保存",
+  "cancel": "取消",
+  "send": "发送",
+  "sending": "发送中...",
+  "sent": "已发送 ✓",
+  "done": "完成",
+  "all": "全部",
+  "you": "您",
+  "active": "当前",
+  "back_to_portal": "返回门户选择",
+  "parent_guardian": "家长 / 监护人",
+  "school": "格林伍德小学",
+  "term_week": "第{{term}}学期，第{{week}}周 · {{year}}年",
+  "viewing": "正在查看：",
+  "no_data": "暂无数据。",
+  "always_available": "随时可用",
+  "just_now": "刚刚",
+  "original_question": "原始问题",
+  "grade_labels": {
+    "above": "超出预期",
+    "at": "达到预期",
+    "below": "低于预期"
+  },
+  "trend": {
+    "improving": "进步中",
+    "declining": "下降中",
+    "stable": "稳定"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "title": "咨询老师",
+  "subtitle": "向{{firstName}}的老师提问——他们会直接回复。您可以随时跟进。",
+  "new_question_btn": "新问题",
+  "new_question_title": "提问新问题",
+  "subject_label": "科目 / 话题",
+  "subject_placeholder": "例如：{{firstName}}本学期的阅读进度",
+  "category_label": "类别",
+  "question_label": "您的问题",
+  "question_placeholder": "在此写下您的问题...",
+  "cancel": "取消",
+  "send_to_teacher": "发送给老师",
+  "sending": "发送中...",
+  "awaiting_reply": "等待回复",
+  "answered": "已回答",
+  "pending_notice": "您的问题已发送给{{teacher}}。通常在24小时内回复。",
+  "follow_up_label": "有后续问题吗？",
+  "add_context_label": "补充说明：",
+  "follow_up_placeholder": "提问后续问题...",
+  "add_details_placeholder": "补充更多问题细节...",
+  "message_count_one": "{{count}} 条消息",
+  "message_count_other": "{{count}} 条消息",
+  "you_prefix": "您：",
+  "no_questions_title": "暂无问题",
+  "no_questions_subtitle": "向{{firstName}}的老师提问，他们的回复将显示在这里。",
+  "ask_teacher_btn": "咨询老师",
+  "priority": {
+    "red": "健康 / 安全",
+    "orange": "学术问题",
+    "yellow": "一般问题"
+  }
+}

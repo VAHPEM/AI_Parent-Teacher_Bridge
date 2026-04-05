@@ -1,0 +1,18 @@
+{
+  "title": "Learning Activities for Home",
+  "subtitle": "AI-generated activities personalised for {{firstName}} · Approved by Ms. Thompson",
+  "week_progress": "This Week's Progress",
+  "progress_count": "{{completed}} of {{total}} activities completed",
+  "all_done": "All activities completed this week! Excellent work, {{firstName}}! 🎉",
+  "mark_done": "Mark Done",
+  "done_label": "Done",
+  "show_steps": "Show steps & questions",
+  "hide_steps": "Hide steps",
+  "how_to": "HOW TO DO IT",
+  "discussion": "DISCUSSION QUESTIONS",
+  "curriculum_ref": "Australian Curriculum: {{ref}}",
+  "confidence": {
+    "high": "Approved by Teacher",
+    "medium": "AI Suggested"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "title": "设置",
+  "subtitle": "管理您的账户和通知偏好",
+  "profile_section": "您的个人资料",
+  "guardian_of": "{{childName}}的家长 / 监护人",
+  "fields": {
+    "full_name": "全名",
+    "email": "邮箱",
+    "phone": "电话",
+    "relationship": "关系",
+    "relationship_value": "家长 / 监护人"
+  },
+  "language_section": "语言与翻译",
+  "language_label": "首选语言",
+  "language_hint": "AI生成的报告和教师通讯将自动翻译成您的首选语言。",
+  "notifications_section": "通知",
+  "notification_items": {
+    "newReport_label": "新进度报告",
+    "newReport_desc": "当{{firstName}}有新报告时通知您",
+    "teacherReply_label": "教师回复",
+    "teacherReply_desc": "当{{teacher}}回复您的消息时通知您",
+    "weeklyDigest_label": "每周摘要邮件",
+    "weeklyDigest_desc": "每周五发送{{firstName}}的一周总结",
+    "aiActivities_label": "新AI学习活动",
+    "aiActivities_desc": "当为{{firstName}}生成新的家庭学习活动时通知您"
+  },
+  "privacy_section": "隐私与数据",
+  "privacy_text": "<strong>您的数据是安全的。</strong>EduTrack AI仅使用{{firstName}}的教育数据来生成个性化学习建议。所有数据安全存储，绝不与第三方共享。AI回复在发送给您之前由{{teacher}}审核。",
+  "save_btn": "保存设置",
+  "saved_btn": "设置已保存 ✓",
+  "languages": {
+    "en": "English",
+    "zh-CN": "简体中文 (Simplified Chinese)",
+    "hi": "हिन्दी (Hindi)"
+  }
+}

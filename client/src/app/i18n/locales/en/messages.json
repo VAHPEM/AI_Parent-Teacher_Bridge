@@ -1,0 +1,32 @@
+{
+  "conversations": "Conversations",
+  "ai_assistant": "EduTrack AI Assistant",
+  "ask_about": "Ask anything about {{firstName}}",
+  "teachers_label": "{{firstName}}'S TEACHERS",
+  "always_available": "Always available",
+  "suggested_questions": "SUGGESTED QUESTIONS",
+  "info_banner": "The AI can answer questions about {{firstName}}'s learning progress, homework, and activities. Sensitive questions will be forwarded to {{pronoun}} teacher.",
+  "ai_input_placeholder": "Ask the AI about {{firstName}}...",
+  "responds_instantly": "Always available · Responds instantly",
+  "ai_draft": "AI Draft",
+  "quick_topics": "Quick Topics",
+  "quick_topics_label": "QUICK TOPICS",
+  "select_teacher": "Select a teacher to view messages",
+  "message_placeholder": "Message {{name}}...",
+  "send": "Send",
+  "sending": "Sending...",
+  "sent": "Sent ✓",
+  "quick_question_templates": [
+    "How is {{firstName}} going in Maths?",
+    "What home activities should I do with {{firstName}}?",
+    "How is {{pronoun}} English going?",
+    "Should {{firstName}} be in extension classes?"
+  ],
+  "quick_topics_list": [
+    "How is {{firstName}} progressing overall?",
+    "I have a concern about {{firstName}}'s wellbeing",
+    "Can we schedule a parent-teacher meeting?",
+    "Question about assessment grades",
+    "Feedback on home learning activities"
+  ]
+}

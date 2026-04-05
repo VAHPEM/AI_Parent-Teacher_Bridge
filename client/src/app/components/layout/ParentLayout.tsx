@@ -1,45 +1,44 @@
-import { use, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 import {
   LayoutDashboard, TrendingUp, BookOpen, Settings,
-  Bell, Menu, X, Sparkles, LogOut, Bot, HelpCircle
+  Bell, Menu, X, Sparkles, LogOut, Bot, HelpCircle, Globe, Loader2
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { AIChatbot } from "../AIChatbot";
-import {DEMO_PARENT_ID} from "../../lib/config";
 import { ParentChildProvider, useParentChild } from "../../context/ParentChildContext";
+import { useLanguage, SUPPORTED_LANGUAGES } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
-
-interface NavItem {
-  label: string;
-  icon: React.ReactNode;
-  path: string;
-}
-
-const navItems: NavItem[] = [
-  { label: "Home", icon: <LayoutDashboard size={18} />, path: "/parent" },
-  { label: "Progress & Grades", icon: <TrendingUp size={18} />, path: "/parent/progress" },
-  { label: "Learning Activities", icon: <BookOpen size={18} />, path: "/parent/activities" },
-  { label: "AI Assistant", icon: <Bot size={18} />, path: "/parent/ai-chat" },
-  { label: "Ask a Teacher", icon: <HelpCircle size={18} />, path: "/parent/questions" },
-  { label: "Settings", icon: <Settings size={18} />, path: "/parent/settings" },
-];
 
 interface ParentLayoutProps {
   children: React.ReactNode;
 }
 
-
 function ParentLayoutInner({ children }: ParentLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
   const { activeChild, children: allChildren, setActiveChildId, parent } = useParentChild();
+  const { t } = useTranslation(["layout", "common"]);
+  const { language, setLanguage, isChangingLanguage } = useLanguage();
+
+  const navItems = useMemo(() => [
+    { label: t("nav.home", { ns: "layout" }), icon: <LayoutDashboard size={18} />, path: "/parent" },
+    { label: t("nav.progress", { ns: "layout" }), icon: <TrendingUp size={18} />, path: "/parent/progress" },
+    { label: t("nav.activities", { ns: "layout" }), icon: <BookOpen size={18} />, path: "/parent/activities" },
+    { label: t("nav.ai_assistant", { ns: "layout" }), icon: <Bot size={18} />, path: "/parent/ai-chat" },
+    { label: t("nav.ask_teacher", { ns: "layout" }), icon: <HelpCircle size={18} />, path: "/parent/questions" },
+    { label: t("nav.settings", { ns: "layout" }), icon: <Settings size={18} />, path: "/parent/settings" },
+  ], [t]);
 
   const isActive = (path: string) => {
     if (path === "/parent") return location.pathname === "/parent";
     return location.pathname.startsWith(path);
   };
-  
+
+  const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === language) ?? SUPPORTED_LANGUAGES[0];
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#F8FAFC", fontFamily: "Inter, sans-serif" }}>
       {sidebarOpen && (
@@ -59,7 +58,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             </div>
             <div>
               <p className="text-sm" style={{ fontWeight: 700, color: "#1E293B" }}>EduTrack AI</p>
-              <p className="text-xs" style={{ color: "#64748B" }}>Parent Portal</p>
+              <p className="text-xs" style={{ color: "#64748B" }}>{t("portal_label", { ns: "layout" })}</p>
             </div>
           </div>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
@@ -69,15 +68,17 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
 
         {/* Children switcher */}
         <div className="border-b border-slate-100" style={{ backgroundColor: "#F0FDF4" }}>
-          <p className="text-xs px-5 pt-3 pb-2" style={{ color: "#64748B", fontWeight: 500 }}>MY CHILDREN</p>
+          <p className="text-xs px-5 pt-3 pb-2" style={{ color: "#64748B", fontWeight: 500 }}>
+            {t("my_children", { ns: "layout" })}
+          </p>
           {allChildren.map(child => {
-            const isActive = child.id === activeChild?.id;
+            const childIsActive = child.id === activeChild?.id;
             return (
               <button
                 key={child.id}
                 onClick={() => setActiveChildId(child.id)}
                 className="w-full flex items-center gap-3 px-5 py-2.5 transition-colors text-left"
-                style={{ backgroundColor: isActive ? "#D1FAE5" : "transparent" }}
+                style={{ backgroundColor: childIsActive ? "#D1FAE5" : "transparent" }}
               >
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0"
@@ -86,14 +87,14 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
                   {child.initials}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate" style={{ fontWeight: 600, color: isActive ? "#065F46" : "#1E293B" }}>
+                  <p className="text-sm truncate" style={{ fontWeight: 600, color: childIsActive ? "#065F46" : "#1E293B" }}>
                     {child.name}
                   </p>
                   <p className="text-xs" style={{ color: "#64748B" }}>{child.year} · {child.teacher}</p>
                 </div>
-                {isActive && (
+                {childIsActive && (
                   <span className="text-xs px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#10B981", color: "white", fontWeight: 600 }}>
-                    Active
+                    {t("active")}
                   </span>
                 )}
               </button>
@@ -110,7 +111,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             </div>
             <div>
               <p className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>{parent?.name}</p>
-              <p className="text-xs" style={{ color: "#64748B" }}>Parent / Guardian</p>
+              <p className="text-xs" style={{ color: "#64748B" }}>{t("parent_guardian")}</p>
             </div>
           </div>
         </div>
@@ -136,15 +137,15 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
 
         {/* School info */}
         <div className="px-5 py-3 border-t border-slate-100" style={{ backgroundColor: "#F8FAFC" }}>
-          <p className="text-xs" style={{ color: "#64748B", fontWeight: 500 }}>Greenwood Primary School</p>
-          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>Term 2, Week 8 · 2026</p>
+          <p className="text-xs" style={{ color: "#64748B", fontWeight: 500 }}>{t("school")}</p>
+          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{t("term_week", { term: 2, week: 8, year: 2026 })}</p>
         </div>
 
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-slate-200">
           <Link to="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
             <LogOut size={18} style={{ color: "#94A3B8" }} />
-            <span className="text-sm" style={{ color: "#64748B" }}>Back to Portal Select</span>
+            <span className="text-sm" style={{ color: "#64748B" }}>{t("back_to_portal")}</span>
           </Link>
         </div>
       </aside>
@@ -158,13 +159,46 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
               <Menu size={20} style={{ color: "#64748B" }} />
             </button>
             <div className="hidden sm:block">
-              <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>Greenwood Primary School</p>
+              <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>{t("school")}</p>
               <p className="text-xs" style={{ color: "#64748B" }}>
-                Viewing: <span style={{ color: activeChild?.color, fontWeight: 600 }}>{activeChild?.name}</span> · {activeChild?.year} · {activeChild?.teacher}
+                {t("viewing")} <span style={{ color: activeChild?.color, fontWeight: 600 }}>{activeChild?.name}</span> · {activeChild?.year} · {activeChild?.teacher}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Language switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setLangMenuOpen(prev => !prev)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors text-xs"
+                style={{ color: "#64748B", fontWeight: 600 }}
+              >
+                <Globe size={14} />
+                {currentLang.nativeLabel}
+              </button>
+              {langMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setLangMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20 min-w-[160px]">
+                    {SUPPORTED_LANGUAGES.map(lang => (
+                      <button
+                        key={lang.code}
+                        onClick={() => { setLanguage(lang.code); setLangMenuOpen(false); }}
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-slate-50 transition-colors"
+                        style={{
+                          color: language === lang.code ? "#10B981" : "#1E293B",
+                          fontWeight: language === lang.code ? 600 : 400,
+                        }}
+                      >
+                        <span>{lang.nativeLabel}</span>
+                        {language === lang.code && <span style={{ color: "#10B981" }}>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
             <button className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors">
               <Bell size={18} style={{ color: "#64748B" }} />
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: "#10B981" }}></span>
@@ -182,12 +216,22 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto relative">
+          {isChangingLanguage && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(248,250,252,0.85)", backdropFilter: "blur(2px)" }}>
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 size={28} className="animate-spin" style={{ color: "#10B981" }} />
+                <p className="text-sm font-medium" style={{ color: "#64748B" }}>Translating...</p>
+              </div>
+            </div>
+          )}
           {children}
         </main>
       </div>
 
-      <AIChatbot open={chatOpen} onToggle={() => setChatOpen(!chatOpen)} portal="parent" />
+      {location.pathname !== "/parent/ai-chat" && (
+        <AIChatbot open={chatOpen} onToggle={() => setChatOpen(!chatOpen)} portal="parent" />
+      )}
     </div>
   );
 }

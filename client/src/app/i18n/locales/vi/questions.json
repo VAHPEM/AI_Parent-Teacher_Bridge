@@ -1,0 +1,32 @@
+{
+  "title": "Hỏi giáo viên",
+  "subtitle": "Đặt câu hỏi cho giáo viên của {{firstName}} — họ sẽ phản hồi trực tiếp. Bạn có thể hỏi thêm bất cứ lúc nào.",
+  "new_question_btn": "Câu hỏi mới",
+  "new_question_title": "Đặt câu hỏi mới",
+  "subject_label": "Môn học / Chủ đề",
+  "subject_placeholder": "Ví dụ: Tiến độ đọc sách của {{firstName}} học kỳ này",
+  "category_label": "Danh mục",
+  "question_label": "Câu hỏi của bạn",
+  "question_placeholder": "Viết câu hỏi của bạn ở đây...",
+  "cancel": "Hủy",
+  "send_to_teacher": "Gửi cho giáo viên",
+  "sending": "Đang gửi...",
+  "awaiting_reply": "Đang chờ phản hồi",
+  "answered": "Đã trả lời",
+  "pending_notice": "Câu hỏi của bạn đã được gửi đến {{teacher}}. Họ thường phản hồi trong vòng 24 giờ.",
+  "follow_up_label": "Bạn có câu hỏi tiếp theo không?",
+  "add_context_label": "Thêm thông tin chi tiết:",
+  "follow_up_placeholder": "Đặt câu hỏi tiếp theo...",
+  "add_details_placeholder": "Thêm chi tiết cho câu hỏi của bạn...",
+  "message_count_one": "{{count}} tin nhắn",
+  "message_count_other": "{{count}} tin nhắn",
+  "you_prefix": "Bạn: ",
+  "no_questions_title": "Chưa có câu hỏi nào",
+  "no_questions_subtitle": "Hãy đặt câu hỏi cho giáo viên của {{firstName}}, họ sẽ phản hồi tại đây.",
+  "ask_teacher_btn": "Hỏi giáo viên",
+  "priority": {
+    "red": "Sức khỏe / An toàn",
+    "orange": "Vấn đề học tập",
+    "yellow": "Thông thường"
+  }
+}

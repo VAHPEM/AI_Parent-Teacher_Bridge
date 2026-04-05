@@ -9,10 +9,15 @@ from app.models.weekly_record import WeeklyRecord
 from app.models.weekly_observation import WeeklyObservation
 from app.models.ai_report import AIReport
 from app.models.activity import Activity
+from app.models.chat_session import ChatSession
 from app.models.message import ChatMessage
 from app.models.parent_question import ParentQuestion
 from app.models.question_reply import QuestionReply
 from app.exceptions.app_exception import AppException
+from app.services.translation_service import TranslationService
+import logging
+
+logger = logging.getLogger(__name__)
 
 COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#EC4899", "#14B8A6", "#F97316"]
 
@@ -80,6 +85,22 @@ def _assert_student_belongs_to_parent(db: Session, student_id: int, parent_id: i
 
 class ParentService:
 
+    @staticmethod
+    def _get_parent_language(db: Session, parent_id: int) -> str:
+        parent = db.query(Parent).filter(Parent.id == parent_id).first()
+        return parent.preferred_language if parent and parent.preferred_language else "en"
+
+    @staticmethod
+    def _get_localized_text(content: str, original_content: str, original_language: str, pref_lang: str) -> str:
+        logger.info(f"Formatting localized text | pref_lang: {pref_lang} | original_language: {original_language} | original_content: {original_content[:20] if original_content else 'None'} | content: {content[:20]}...")
+        if pref_lang == "en":
+            return content
+        if original_language == pref_lang and original_content:
+            logger.info(f"Found matching original_content for language {pref_lang}, returning original.")
+            return original_content
+        # If it's not missing and different languages, translate on the fly
+        return TranslationService.translate_from_english(content, pref_lang)
+
     # ── Children ──────────────────────────────────────────────────────
     @staticmethod
     def get_parent_info(db: Session, parent_id: int) -> dict:
@@ -131,6 +152,10 @@ class ParentService:
     def get_dashboard(db: Session, student_id: int, parent_id: int) -> dict:
         _assert_student_belongs_to_parent(db, student_id, parent_id)
         student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            raise AppException("Student not found", 404)
+
+        pref_lang = ParentService._get_parent_language(db, student.parent_id)
 
         latest_week = (
             db.query(func.max(WeeklyRecord.week_number))
@@ -184,18 +209,24 @@ class ParentService:
             else f"{student.name.split()[0]} is making progress this term."
         )
 
-        return {
+        result = {
             "recentReports":  recent_reports,
             "recentActivity": RECENT_ACTIVITY,
             "upcomingEvents": UPCOMING_EVENTS,
             "aiInsight":      ai_insight,
         }
 
+        return TranslationService.translate_json(result, pref_lang, db) if pref_lang != "en" else result
+
     # ── Progress ──────────────────────────────────────────────────────
     @staticmethod
     def get_progress(db: Session, student_id: int, parent_id: int) -> dict:
         _assert_student_belongs_to_parent(db, student_id, parent_id)
         student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            raise AppException("Student not found", 404)
+
+        pref_lang = ParentService._get_parent_language(db, student.parent_id)
 
         latest_week = (
             db.query(func.max(WeeklyRecord.week_number))
@@ -271,12 +302,16 @@ class ParentService:
             weeks_seen[key][r.subject] = float(r.score or 0)
         progress_history = list(weeks_seen.values())
 
-        return {"subjects": subjects, "progressHistory": progress_history}
+        result = {"subjects": subjects, "progressHistory": progress_history}
+        return TranslationService.translate_json(result, pref_lang, db) if pref_lang != "en" else result
 
     # ── Activities ────────────────────────────────────────────────────
     @staticmethod
     def get_activities(db: Session, student_id: int, parent_id: int) -> list:
         _assert_student_belongs_to_parent(db, student_id, parent_id)
+        student = db.query(Student).filter(Student.id == student_id).first()
+        pref_lang = ParentService._get_parent_language(db, student.parent_id) if student else "en"
+
         rows = (
             db.query(Activity)
             .filter(Activity.student_id == student_id)
@@ -290,6 +325,7 @@ class ParentService:
             if a.subject_id:
                 subj = db.query(Subject).filter(Subject.id == a.subject_id).first()
                 subject_name = subj.subject_name if subj else None
+
             result.append({
                 "id":            a.id,
                 "subject":       subject_name,
@@ -305,7 +341,8 @@ class ParentService:
                 "confidence":    "medium",
                 "completed":     a.completed,
             })
-        return result
+
+        return TranslationService.translate_json(result, pref_lang, db) if pref_lang != "en" else result
 
     @staticmethod
     def complete_activity(db: Session, activity_id: int) -> dict:
@@ -337,6 +374,7 @@ class ParentService:
     @staticmethod
     def get_messages(db: Session, student_id: int, parent_id: int) -> list:
         teachers = ParentService.get_teachers(db, student_id, parent_id)
+        pref_lang = ParentService._get_parent_language(db, parent_id)
         result = []
         for t in teachers:
             questions = (
@@ -354,7 +392,7 @@ class ParentService:
                     "id":         f"q-{q.id}",
                     "from_type":  "parent",
                     "from_id":    parent_id,
-                    "text":       q.content,
+                    "text":       ParentService._get_localized_text(q.content, q.original_content, q.original_language, pref_lang),
                     "created_at": str(q.created_at),
                 })
                 replies = (
@@ -368,7 +406,7 @@ class ParentService:
                         "id":         r.id,
                         "from_type":  r.from_role,
                         "from_id":    r.from_id,
-                        "text":       r.content,
+                        "text":       ParentService._get_localized_text(r.content, r.original_content, r.original_language, pref_lang),
                         "created_at": str(r.created_at),
                     })
             result.append({
@@ -381,10 +419,17 @@ class ParentService:
     @staticmethod
     def send_message(db: Session, student_id: int, teacher_id: int, text: str, parent_id: int) -> dict:
         _assert_student_belongs_to_parent(db, student_id, parent_id)
+        pref_lang = ParentService._get_parent_language(db, parent_id)
+        logger.info(f"Handling send_message | parent_id={parent_id} | pref_lang={pref_lang} | text={text[:20]}...")
+        english_content = TranslationService.translate_to_english(text, pref_lang) if pref_lang != "en" else text
+        logger.info(f"Saving send_message | english_content={english_content[:20]}...")
+
         q = ParentQuestion(
             parent_id=parent_id,
             student_id=student_id,
-            content=text,
+            content=english_content,
+            original_content=text,
+            original_language=pref_lang,
             priority="yellow",
         )
         db.add(q)
@@ -396,6 +441,7 @@ class ParentService:
     @staticmethod
     def get_questions(db: Session, student_id: int, parent_id: int) -> list:
         _assert_student_belongs_to_parent(db, student_id, parent_id)
+        pref_lang = ParentService._get_parent_language(db, parent_id)
         questions = (
             db.query(ParentQuestion)
             .filter(
@@ -418,10 +464,16 @@ class ParentService:
             if q.subject_id:
                 subj = db.query(Subject).filter(Subject.id == q.subject_id).first()
                 subject_name = subj.subject_name if subj else None
+
+            # Translate subject_name on the fly if needed (though we didn't save original subject)
+            # Assuming subject_name is standard or we translate it
+            if subject_name and pref_lang != "en":
+                subject_name = TranslationService.translate_from_english(subject_name, pref_lang)
+
             result.append({
                 "id":                  q.id,
                 "subject":             subject_name,
-                "content":             q.content,
+                "content":             ParentService._get_localized_text(q.content, q.original_content, q.original_language, pref_lang),
                 "priority":            q.priority,
                 "status":              q.status,
                 "createdAt":           str(q.created_at),
@@ -431,7 +483,7 @@ class ParentService:
                         "id":         r.id,
                         "from_type":  r.from_role,
                         "from_id":    r.from_id,
-                        "content":    r.content,
+                        "content":    ParentService._get_localized_text(r.content, r.original_content, r.original_language, pref_lang),
                         "created_at": str(r.created_at),
                     }
                     for r in replies
@@ -442,12 +494,19 @@ class ParentService:
     @staticmethod
     def create_question(db: Session, student_id: int, subject: str, content: str, priority: str, parent_id: int) -> dict:
         _assert_student_belongs_to_parent(db, student_id, parent_id)
+        pref_lang = ParentService._get_parent_language(db, parent_id)
+        logger.info(f"create_question | pref_lang={pref_lang} | subject={subject[:30]} | content={content[:30]}...")
+        english_subject = TranslationService.translate_to_english(subject, pref_lang) if pref_lang != "en" else subject
+        english_content = TranslationService.translate_to_english(content, pref_lang) if pref_lang != "en" else content
+        logger.info(
+            f"create_question | english_subject={english_subject[:30]} | english_content={english_content[:30]}...")
+
         # Look up or create subject by name
         subject_id = None
-        if subject:
-            subj = db.query(Subject).filter(Subject.subject_name == subject).first()
+        if english_subject:
+            subj = db.query(Subject).filter(Subject.subject_name == english_subject).first()
             if not subj:
-                subj = Subject(subject_name=subject)
+                subj = Subject(subject_name=english_subject)
                 db.add(subj)
                 db.flush()
             subject_id = subj.id
@@ -456,7 +515,9 @@ class ParentService:
             parent_id=parent_id,
             student_id=student_id,
             subject_id=subject_id,
-            content=content,
+            content=english_content,
+            original_content=content,
+            original_language=pref_lang,
             priority=priority,
             flag_reason=priority,
         )
@@ -472,11 +533,17 @@ class ParentService:
             raise AppException("Question not found", 404)
         if q.parent_id != parent_id:
             raise AppException("Not allowed to update this question", 403)
+
+        pref_lang = ParentService._get_parent_language(db, parent_id)
+        english_content = TranslationService.translate_to_english(content, pref_lang) if pref_lang != "en" else content
+
         reply = QuestionReply(
             question_id=question_id,
             from_role="parent",
             from_id=parent_id,
-            content=content,
+            content=english_content,
+            original_content=content,
+            original_language=pref_lang,
         )
         db.add(reply)
         db.commit()
@@ -507,3 +574,57 @@ class ParentService:
             parent.notifications = notifications
         db.commit()
         return {"message": "Saved"}
+
+    # ── AI Chat Sessions ──────────────────────────────────────────────
+    @staticmethod
+    def get_chat_sessions(db: Session, student_id: int, parent_id: int) -> list:
+        sessions = (
+            db.query(ChatSession)
+            .filter(ChatSession.student_id == student_id, ChatSession.parent_id == parent_id)
+            .order_by(desc(ChatSession.created_at))
+            .all()
+        )
+        return [
+            {"id": s.id, "title": s.title or "New Chat", "language": s.language, "created_at": str(s.created_at)}
+            for s in sessions
+        ]
+
+    @staticmethod
+    def create_chat_session(db: Session, student_id: int, parent_id: int, language: str) -> dict:
+        session = ChatSession(student_id=student_id, parent_id=parent_id, language=language)
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return {"id": session.id, "title": session.title or "New Chat", "language": session.language, "created_at": str(session.created_at)}
+
+    @staticmethod
+    def get_session_messages(db: Session, session_id: int) -> list:
+        msgs = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at)
+            .all()
+        )
+        return [{"id": m.id, "role": m.role, "content": m.content, "created_at": str(m.created_at)} for m in msgs]
+
+    @staticmethod
+    def delete_chat_session(db: Session, session_id: int, parent_id: int) -> None:
+        session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.parent_id == parent_id).first()
+        if not session:
+            raise AppException("Session not found", 404)
+        db.delete(session)
+        db.commit()
+
+    @staticmethod
+    def add_chat_message(db: Session, session_id: int, role: str, content: str) -> dict:
+        msg = ChatMessage(session_id=session_id, role=role, content=content)
+        db.add(msg)
+        # Update session title from first parent message
+        if role == "parent":
+            session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+            if session and not session.title:
+                session.title = content[:60]
+        db.commit()
+        db.refresh(msg)
+        return {"id": msg.id, "role": msg.role, "content": msg.content, "created_at": str(msg.created_at)}
+

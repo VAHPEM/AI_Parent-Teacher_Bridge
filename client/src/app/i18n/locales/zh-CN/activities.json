@@ -1,0 +1,18 @@
+{
+  "title": "家庭学习活动",
+  "subtitle": "AI为{{firstName}}个性化生成的活动 · 已经汤普森女士审核",
+  "week_progress": "本周进度",
+  "progress_count": "已完成 {{completed}} / {{total}} 项活动",
+  "all_done": "本周所有活动已完成！{{firstName}}，太棒了！🎉",
+  "mark_done": "标记完成",
+  "done_label": "已完成",
+  "show_steps": "显示步骤与问题",
+  "hide_steps": "隐藏步骤",
+  "how_to": "如何操作",
+  "discussion": "讨论问题",
+  "curriculum_ref": "澳大利亚课程：{{ref}}",
+  "confidence": {
+    "high": "已由教师审核",
+    "medium": "AI建议"
+  }
+}

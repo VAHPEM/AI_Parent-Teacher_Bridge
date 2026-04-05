@@ -1,0 +1,12 @@
+{
+  "portal_label": "家长门户",
+  "my_children": "我的孩子",
+  "nav": {
+    "home": "首页",
+    "progress": "成绩与进度",
+    "activities": "学习活动",
+    "ai_assistant": "AI助手",
+    "ask_teacher": "咨询老师",
+    "settings": "设置"
+  }
+}

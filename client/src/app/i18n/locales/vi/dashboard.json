@@ -1,0 +1,22 @@
+{
+  "greeting": "Xin chào, {{name}}! 👋",
+  "subtitle": "Đây là báo cáo tiến độ mới nhất của {{firstName}} cho Học kỳ {{term}}, Tuần {{week}}",
+  "ask_teacher_btn": "Hỏi {{teacher}}",
+  "overall": "Tổng quan",
+  "attendance": "Chuyên cần",
+  "subjects": "Môn học",
+  "ai_insight_label": "Nhận xét AI:",
+  "latest_reports": "Báo cáo môn học mới nhất",
+  "view_all": "Xem tất cả",
+  "week_term": "Tuần {{week}}, Học kỳ {{term}}",
+  "teacher_comment": "NHẬN XÉT CỦA GIÁO VIÊN",
+  "ai_recommended": "HOẠT ĐỘNG TẠI NHÀ DO AI ĐỀ XUẤT",
+  "recent_activity": "Hoạt động gần đây",
+  "upcoming": "Sắp tới",
+  "quick_actions": "Thao tác nhanh",
+  "actions": {
+    "progress": "Xem báo cáo tiến độ đầy đủ",
+    "activities": "Xem hoạt động học tập",
+    "messages": "Gửi tin nhắn"
+  }
+}

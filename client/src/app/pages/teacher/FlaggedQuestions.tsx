@@ -255,11 +255,57 @@ export function FlaggedQuestions() {
                     </div>
                   </div>
 
-                  {/* Question */}
-                  <div className="mt-4 p-4 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-                    <p className="text-sm" style={{ color: "#1E293B", lineHeight: "1.7", fontStyle: "italic" }}>
-                      "{q.question}"
-                    </p>
+                  {/* Conversation thread */}
+                  <div className="mt-4 space-y-2">
+                    {/* Original question */}
+                    <div className="flex gap-3">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5" style={{ backgroundColor: q.avatarColor, fontWeight: 700, fontSize: "10px" }}>
+                        {q.parentInitials}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold" style={{ color: "#1E293B" }}>{q.parentName}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F1F5F9", color: "#94A3B8" }}>Original question</span>
+                          <span className="text-xs" style={{ color: "#94A3B8" }}>{q.timestamp}</span>
+                        </div>
+                        <div className="p-3 rounded-xl text-sm" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", color: "#1E293B", lineHeight: "1.7" }}>
+                          {q.question}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Replies */}
+                    {q.replies?.map((r: any) => (
+                      <div key={r.id} className="flex gap-3">
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5"
+                          style={{ backgroundColor: r.from_role === "teacher" ? "#2563EB" : q.avatarColor, fontWeight: 700, fontSize: "10px" }}
+                        >
+                          {r.from_role === "teacher" ? "MT" : q.parentInitials}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-semibold" style={{ color: "#1E293B" }}>
+                              {r.from_role === "teacher" ? "Ms. Thompson" : q.parentName}
+                            </span>
+                            <span className="text-xs" style={{ color: "#94A3B8" }}>
+                              {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <div
+                            className="p-3 rounded-xl text-sm"
+                            style={{
+                              backgroundColor: r.from_role === "teacher" ? "#F0FDF4" : "#F8FAFC",
+                              border: `1px solid ${r.from_role === "teacher" ? "#86EFAC" : "#E2E8F0"}`,
+                              color: "#1E293B",
+                              lineHeight: "1.7",
+                            }}
+                          >
+                            {r.content}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* AI Flag badge */}

@@ -1,0 +1,22 @@
+{
+  "greeting": "शुभ दोपहर, {{name}}! 👋",
+  "subtitle": "यहाँ {{firstName}} की टर्म {{term}}, सप्ताह {{week}} की नवीनतम प्रगति रिपोर्ट है",
+  "ask_teacher_btn": "{{teacher}} से पूछें",
+  "overall": "कुल",
+  "attendance": "उपस्थिति",
+  "subjects": "विषय",
+  "ai_insight_label": "AI अंतर्दृष्टि:",
+  "latest_reports": "नवीनतम विषय रिपोर्ट",
+  "view_all": "सभी देखें",
+  "week_term": "टर्म {{term}}, सप्ताह {{week}}",
+  "teacher_comment": "शिक्षक की टिप्पणी",
+  "ai_recommended": "AI अनुशंसित घर की गतिविधियाँ",
+  "recent_activity": "हालिया गतिविधि",
+  "upcoming": "आगामी",
+  "quick_actions": "त्वरित क्रियाएँ",
+  "actions": {
+    "progress": "पूरी प्रगति रिपोर्ट देखें",
+    "activities": "सीखने की गतिविधियाँ देखें",
+    "messages": "संदेश भेजें"
+  }
+}

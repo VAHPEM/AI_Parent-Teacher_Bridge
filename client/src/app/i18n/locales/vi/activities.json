@@ -1,0 +1,18 @@
+{
+  "title": "Hoạt động học tập tại nhà",
+  "subtitle": "Hoạt động do AI tạo, được cá nhân hóa cho {{firstName}} · Được cô Thompson phê duyệt",
+  "week_progress": "Tiến độ tuần này",
+  "progress_count": "{{completed}} / {{total}} hoạt động đã hoàn thành",
+  "all_done": "Đã hoàn thành tất cả hoạt động tuần này! Tuyệt vời, {{firstName}}! 🎉",
+  "mark_done": "Đánh dấu hoàn thành",
+  "done_label": "Hoàn thành",
+  "show_steps": "Xem các bước & câu hỏi",
+  "hide_steps": "Ẩn các bước",
+  "how_to": "CÁCH THỰC HIỆN",
+  "discussion": "CÂU HỎI THẢO LUẬN",
+  "curriculum_ref": "Chương trình Úc: {{ref}}",
+  "confidence": {
+    "high": "Được giáo viên phê duyệt",
+    "medium": "AI đề xuất"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "greeting": "下午好，{{name}}！👋",
+  "subtitle": "这是{{firstName}}第{{term}}学期第{{week}}周的最新进度报告",
+  "ask_teacher_btn": "询问{{teacher}}",
+  "overall": "总体",
+  "attendance": "出勤率",
+  "subjects": "科目数",
+  "ai_insight_label": "AI洞察：",
+  "latest_reports": "最新科目报告",
+  "view_all": "查看全部",
+  "week_term": "第{{term}}学期第{{week}}周",
+  "teacher_comment": "教师评语",
+  "ai_recommended": "AI推荐家庭学习活动",
+  "recent_activity": "最近动态",
+  "upcoming": "即将到来",
+  "quick_actions": "快捷操作",
+  "actions": {
+    "progress": "查看完整进度报告",
+    "activities": "查看学习活动",
+    "messages": "发送消息"
+  }
+}

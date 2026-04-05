@@ -99,6 +99,7 @@ class MessageCreate(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: int
 
 
 class ChatResponse(BaseModel):

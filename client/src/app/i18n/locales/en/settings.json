@@ -1,0 +1,36 @@
+{
+  "title": "Settings",
+  "subtitle": "Manage your account and notification preferences",
+  "profile_section": "Your Profile",
+  "guardian_of": "Parent / Guardian of {{childName}}",
+  "fields": {
+    "full_name": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "relationship": "Relationship",
+    "relationship_value": "Parent / Guardian"
+  },
+  "language_section": "Language & Translation",
+  "language_label": "Preferred Language",
+  "language_hint": "AI-generated reports and teacher communications will be automatically translated to your preferred language.",
+  "notifications_section": "Notifications",
+  "notification_items": {
+    "newReport_label": "New progress reports",
+    "newReport_desc": "Get notified when a new report is ready for {{firstName}}",
+    "teacherReply_label": "Teacher replies",
+    "teacherReply_desc": "Notification when {{teacher}} replies to your messages",
+    "weeklyDigest_label": "Weekly summary email",
+    "weeklyDigest_desc": "A summary of {{firstName}}'s week sent every Friday",
+    "aiActivities_label": "New AI learning activities",
+    "aiActivities_desc": "When new home learning activities are generated for {{firstName}}"
+  },
+  "privacy_section": "Privacy & Data",
+  "privacy_text": "<strong>Your data is secure.</strong> EduTrack AI only uses {{firstName}}'s educational data to generate personalised learning recommendations. All data is stored securely and is never shared with third parties. AI responses are reviewed by {{teacher}} before being sent to you.",
+  "save_btn": "Save Settings",
+  "saved_btn": "Settings Saved ✓",
+  "languages": {
+    "en": "English",
+    "zh-CN": "简体中文 (Simplified Chinese)",
+    "hi": "हिन्दी (Hindi)"
+  }
+}

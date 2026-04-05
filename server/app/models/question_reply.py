@@ -9,5 +9,7 @@ class QuestionReply(Base):
     question_id = Column(Integer, ForeignKey("parent_questions.id"), nullable=False)
     from_role   = Column(String(50), nullable=False)   # "teacher" | "parent"
     from_id     = Column(Integer)
-    content     = Column(Text, nullable=False)
-    created_at  = Column(TIMESTAMP, server_default=func.now())
+    content             = Column(Text, nullable=False)
+    original_content    = Column(Text, nullable=True)
+    original_language   = Column(String(10), nullable=True)
+    created_at          = Column(TIMESTAMP, server_default=func.now())

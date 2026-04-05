@@ -1,0 +1,32 @@
+{
+  "conversations": "बातचीत",
+  "ai_assistant": "EduTrack AI सहायक",
+  "ask_about": "{{firstName}} के बारे में कुछ भी पूछें",
+  "teachers_label": "{{firstName}} के शिक्षक",
+  "always_available": "हमेशा उपलब्ध",
+  "suggested_questions": "सुझाए गए प्रश्न",
+  "info_banner": "AI {{firstName}} की सीखने की प्रगति, होमवर्क और गतिविधियों के बारे में प्रश्नों का उत्तर दे सकता है। संवेदनशील प्रश्न {{firstName}} के शिक्षक को अग्रेषित किए जाएंगे।",
+  "ai_input_placeholder": "{{firstName}} के बारे में AI से पूछें...",
+  "responds_instantly": "हमेशा उपलब्ध · तत्काल जवाब",
+  "ai_draft": "AI मसौदा",
+  "quick_topics": "त्वरित विषय",
+  "quick_topics_label": "त्वरित विषय",
+  "select_teacher": "संदेश देखने के लिए शिक्षक चुनें",
+  "message_placeholder": "{{name}} को संदेश...",
+  "send": "भेजें",
+  "sending": "भेजा जा रहा है...",
+  "sent": "भेजा गया ✓",
+  "quick_question_templates": [
+    "{{firstName}} गणित में कैसा कर रहा है?",
+    "मुझे {{firstName}} के साथ घर पर कौन सी गतिविधियाँ करनी चाहिए?",
+    "{{firstName}} की अंग्रेजी कैसी है?",
+    "क्या {{firstName}} को एक्सटेंशन कक्षाओं में होना चाहिए?"
+  ],
+  "quick_topics_list": [
+    "{{firstName}} समग्र रूप से कैसा प्रदर्शन कर रहा/रही है?",
+    "मुझे {{firstName}} की भलाई के बारे में चिंता है",
+    "क्या हम एक पैरेंट-टीचर मीटिंग निर्धारित कर सकते हैं?",
+    "असेसमेंट ग्रेड के बारे में सवाल",
+    "होम लर्निंग गतिविधियों पर फीडबैक"
+  ]
+}
