@@ -19,7 +19,7 @@ _SKIP_VALUE_PATTERNS = [
 class TranslationService:
     @staticmethod
     def _normalize_lang(lang: str) -> str:
-        return {'zh-CN': 'zh-CN', 'zh-TW': 'zh-TW', 'hi': 'hi', 'en': 'en'}.get(lang, lang)
+        return {'zh-CN': 'zh-CN', 'zh-TW': 'zh-TW', 'hi': 'hi', 'vi': 'vi', 'en': 'en'}.get(lang, lang)
 
     @staticmethod
     def translate_to_english(text: str, source_lang: str) -> str:

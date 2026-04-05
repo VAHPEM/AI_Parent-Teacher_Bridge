@@ -1,0 +1,16 @@
+{
+  "title": "Trợ lý AI EduTrack",
+  "status": "Luôn sẵn sàng · Phản hồi ngay lập tức",
+  "info_banner": "AI có thể trả lời câu hỏi về tiến độ học tập, điểm số và hoạt động tại nhà của {{firstName}}. Với các vấn đề nhạy cảm (sức khỏe tinh thần, hành vi), hãy dùng <strong>Hỏi giáo viên</strong> để giáo viên phản hồi trực tiếp.",
+  "suggested_label": "CÂU HỎI GỢI Ý",
+  "input_placeholder": "Hỏi AI về tiến độ của {{firstName}}...",
+  "error_message": "Xin lỗi, đã xảy ra lỗi.",
+  "new_chat": "Cuộc trò chuyện mới",
+  "greeting": "Xin chào! Tôi là trợ lý AI EduTrack. Tôi có thể giúp bạn theo dõi tiến độ học tập của con, gợi ý hoạt động tại nhà, hoặc giải thích kết quả đánh giá. Bạn muốn biết gì?",
+  "suggested_questions": [
+    "{{firstName}} học Toán như thế nào?",
+    "Tôi nên làm hoạt động gì cùng {{firstName}} ở nhà?",
+    "Môn Tiếng Anh của {{pronoun}} đang thế nào?",
+    "Môn Khoa học của {{pronoun}} đang thế nào?"
+  ]
+}

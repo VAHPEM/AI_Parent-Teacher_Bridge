@@ -1,0 +1,31 @@
+{
+  "loading": "Đang tải...",
+  "save": "Lưu",
+  "cancel": "Hủy",
+  "send": "Gửi",
+  "sending": "Đang gửi...",
+  "sent": "Đã gửi ✓",
+  "done": "Hoàn thành",
+  "all": "Tất cả",
+  "you": "Bạn",
+  "active": "Đang chọn",
+  "back_to_portal": "Quay lại chọn cổng",
+  "parent_guardian": "Phụ huynh / Người giám hộ",
+  "school": "Trường Tiểu học Greenwood",
+  "term_week": "Học kỳ {{term}}, Tuần {{week}} · {{year}}",
+  "viewing": "Đang xem:",
+  "no_data": "Không có dữ liệu.",
+  "always_available": "Luôn sẵn sàng",
+  "just_now": "Vừa xong",
+  "original_question": "Câu hỏi gốc",
+  "grade_labels": {
+    "above": "Vượt kỳ vọng",
+    "at": "Đạt kỳ vọng",
+    "below": "Chưa đạt kỳ vọng"
+  },
+  "trend": {
+    "improving": "Đang tiến bộ",
+    "declining": "Đang giảm sút",
+    "stable": "Ổn định"
+  }
+}

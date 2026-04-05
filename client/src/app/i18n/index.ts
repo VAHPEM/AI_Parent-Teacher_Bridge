@@ -35,6 +35,17 @@ import hiAiChat from "./locales/hi/ai-chat.json";
 import hiQuestions from "./locales/hi/questions.json";
 import hiSettings from "./locales/hi/settings.json";
 
+// VI
+import viCommon from "./locales/vi/common.json";
+import viLayout from "./locales/vi/layout.json";
+import viDashboard from "./locales/vi/dashboard.json";
+import viProgress from "./locales/vi/progress.json";
+import viActivities from "./locales/vi/activities.json";
+import viMessages from "./locales/vi/messages.json";
+import viAiChat from "./locales/vi/ai-chat.json";
+import viQuestions from "./locales/vi/questions.json";
+import viSettings from "./locales/vi/settings.json";
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -72,6 +83,17 @@ i18n
         "ai-chat": hiAiChat,
         questions: hiQuestions,
         settings: hiSettings,
+      },
+      vi: {
+        common: viCommon,
+        layout: viLayout,
+        dashboard: viDashboard,
+        progress: viProgress,
+        activities: viActivities,
+        messages: viMessages,
+        "ai-chat": viAiChat,
+        questions: viQuestions,
+        settings: viSettings,
       },
     },
     lng: undefined,

@@ -7,6 +7,7 @@ export const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English", nativeLabel: "English" },
   { code: "zh-CN", label: "Simplified Chinese", nativeLabel: "简体中文" },
   { code: "hi", label: "Hindi", nativeLabel: "हिन्दी" },
+  { code: "vi", label: "Vietnamese", nativeLabel: "Tiếng Việt" },
 ];
 
 interface LanguageContextType {
