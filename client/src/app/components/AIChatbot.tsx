@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, CheckCircle, Info, AlertTriangle, Flag, Sparkles, Bot } from "lucide-react";
+import { postParentChat } from "../lib/api";
 
 type ConfidenceLevel = "high" | "medium" | "low" | "sensitive";
 type Portal = "teacher" | "parent";
@@ -131,23 +132,60 @@ interface AIChatbotProps {
   open: boolean;
   onToggle: () => void;
   portal: Portal;
+  /** When set (parent portal), replies call the same API as /parent/ai-chat — not keyword mocks. */
+  parentStudentId?: number;
+  parentFirstName?: string;
 }
 
-export function AIChatbot({ open, onToggle, portal }: AIChatbotProps) {
-  const [messages, setMessages] = useState<Message[]>([
+function timeLabel() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+export function AIChatbot({
+  open,
+  onToggle,
+  portal,
+  parentStudentId,
+  parentFirstName,
+}: AIChatbotProps) {
+  const parentLive =
+    portal === "parent" && parentStudentId != null && parentStudentId > 0;
+
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: 1,
       role: "assistant",
-      content: portal === "teacher"
-        ? "Hello Ms. Thompson! I'm your EduTrack AI assistant. I can help you review student performance, manage pending approvals, and respond to parent questions. What would you like to know?"
-        : "Hello! I'm the EduTrack AI assistant for Greenwood Primary. I can help you understand Noah's progress, homework recommendations, and how to connect with Ms. Thompson. How can I help?",
+      content:
+        portal === "teacher"
+          ? "Hello Ms. Thompson! I'm your EduTrack AI assistant. I can help you review student performance, manage pending approvals, and respond to parent questions. What would you like to know?"
+          : parentLive
+            ? `Hi! I use ${parentFirstName ?? "your child"}'s teacher-approved school report — same backend as the AI Assistant page. Ask about their progress.`
+            : "Hello! I'm the EduTrack AI assistant for Greenwood Primary. Demo mode: connect a student id or use the AI Assistant page for live answers.",
       confidence: "high",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    }
+      timestamp: timeLabel(),
+    },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const nextId = useRef(2);
+
+  useEffect(() => {
+    if (portal !== "parent") return;
+    const fn = parentFirstName ?? "your child";
+    setMessages([
+      {
+        id: 1,
+        role: "assistant",
+        content: parentLive
+          ? `Hi! I use ${fn}'s teacher-approved school report — same backend as the AI Assistant page. Ask about their progress.`
+          : `Hi! Add a valid student in the app (or set VITE_PARENT_API_STUDENT_ID_*) for live answers. Showing demo replies below for ${fn}.`,
+        confidence: "high",
+        timestamp: timeLabel(),
+      },
+    ]);
+    nextId.current = 2;
+  }, [portal, parentStudentId, parentFirstName, parentLive]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -155,35 +193,80 @@ export function AIChatbot({ open, onToggle, portal }: AIChatbotProps) {
 
   const handleSend = () => {
     if (!input.trim()) return;
-
-    const userMessage: Message = {
-      id: messages.length + 1,
-      role: "user",
-      content: input,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    };
-
-    setMessages(prev => [...prev, userMessage]);
+    const text = input.trim();
+    const ts = timeLabel();
+    const userId = nextId.current++;
+    setMessages((prev) => [
+      ...prev,
+      { id: userId, role: "user", content: text, timestamp: ts },
+    ]);
     setInput("");
     setIsTyping(true);
 
+    if (parentLive) {
+      void (async () => {
+        try {
+          const reply = await postParentChat(parentStudentId!, text);
+          const aid = nextId.current++;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: aid,
+              role: "assistant",
+              content: reply.trim() || "Empty reply from server.",
+              confidence: "high",
+              timestamp: timeLabel(),
+            },
+          ]);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Request failed";
+          const { response, confidence } = getResponse(text, portal);
+          const aid = nextId.current++;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: aid,
+              role: "assistant",
+              content: `Could not reach the live assistant (${msg}). Offline demo:\n\n${response}`,
+              confidence: confidence === "sensitive" ? confidence : "low",
+              timestamp: timeLabel(),
+            },
+          ]);
+        } finally {
+          setIsTyping(false);
+        }
+      })();
+      return;
+    }
+
     setTimeout(() => {
-      const { response, confidence } = getResponse(input, portal);
-      const aiMessage: Message = {
-        id: messages.length + 2,
-        role: "assistant",
-        content: response,
-        confidence,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      };
-      setMessages(prev => [...prev, aiMessage]);
+      const { response, confidence } = getResponse(text, portal);
+      const aid = nextId.current++;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: aid,
+          role: "assistant",
+          content: response,
+          confidence,
+          timestamp: timeLabel(),
+        },
+      ]);
       setIsTyping(false);
-    }, 1200);
+    }, 800);
   };
 
-  const suggestedQuestions = portal === "teacher"
-    ? ["What's pending review?", "Show flagged parent questions", "How is the class performing?"]
-    : ["What grade did Noah get?", "What homework should we do?", "How do I contact Ms. Thompson?"];
+  const first = parentFirstName ?? "your child";
+  const suggestedQuestions =
+    portal === "teacher"
+      ? ["What's pending review?", "Show flagged parent questions", "How is the class performing?"]
+      : parentLive
+        ? [
+            `How is ${first} going in Maths?`,
+            `What home activities help ${first}?`,
+            "How do I contact the teacher?",
+          ]
+        : ["What grade did Noah get?", "What homework should we do?", "How do I contact Ms. Thompson?"];
 
   return (
     <>
@@ -326,7 +409,9 @@ export function AIChatbot({ open, onToggle, portal }: AIChatbotProps) {
               </button>
             </div>
             <p className="text-xs text-center mt-2" style={{ color: "#94A3B8" }}>
-              AI responses are reviewed by teachers before action
+              {parentLive
+                ? "Same API as AI Assistant — grounded on teacher-approved reports."
+                : "AI responses are reviewed by teachers before action"}
             </p>
           </div>
         </div>

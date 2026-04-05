@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.dto.api_response import ApiResponse
 from app.schemas.ai_report import AiReportPatchBody
+from app.ai.config import Config
 from app.services.parent_chat import approve_ai_report
 from app.services.teacher_reports_service import (
     generate_draft_parent_report,
@@ -31,9 +32,25 @@ def get_student_record(student_id: int):
 
 
 @router.get("/students")
-def list_students():
-    """Students available for AI report generation."""
-    return ApiResponse(body=students_for_dropdown(), message="success")
+def list_students(
+    teacher_id: int | None = Query(
+        None,
+        description="Filter by classes.teacher_id (overrides TEACHER_ID env).",
+    ),
+    class_ids: str | None = Query(
+        None,
+        description="Comma-separated class IDs (overrides TEACHER_CLASS_IDS env).",
+    ),
+):
+    """Students available for AI report generation (scoped to this teacher when configured)."""
+    parsed_classes = Config.parse_class_ids_query(class_ids)
+    return ApiResponse(
+        body=students_for_dropdown(
+            query_teacher_id=teacher_id,
+            query_class_ids=parsed_classes,
+        ),
+        message="success",
+    )
 
 
 @router.post("/generate-report/{student_id}")

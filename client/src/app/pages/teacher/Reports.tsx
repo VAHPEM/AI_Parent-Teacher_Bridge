@@ -34,12 +34,14 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
 
 export function Reports() {
   const [students, setStudents] = useState<StudentBrief[]>([]);
-  const [studentId, setStudentId] = useState<number>(1);
+  const [studentId, setStudentId] = useState<number>(0);
   const [generating, setGenerating] = useState(false);
   const [genMessage, setGenMessage] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
+  const [studentsLoadError, setStudentsLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    setStudentsLoadError(null);
     fetchTeacherStudents()
       .then((list) => {
         setStudents(list);
@@ -47,12 +49,19 @@ export function Reports() {
           setStudentId((prev) =>
             list.some((s) => s.id === prev) ? prev : list[0].id
           );
+        } else {
+          setStudentId(0);
         }
       })
-      .catch(() => setStudents([]));
+      .catch((e) => {
+        setStudents([]);
+        setStudentId(0);
+        setStudentsLoadError(e instanceof Error ? e.message : "Could not load students");
+      });
   }, []);
 
   const handleGenerate = async () => {
+    if (!students.length || studentId <= 0) return;
     setGenerating(true);
     setGenMessage(null);
     setGenError(null);
@@ -84,16 +93,24 @@ export function Reports() {
             <div className="flex flex-col gap-1">
               <label className="text-xs" style={{ color: "#64748B", fontWeight: 600 }}>Student</label>
               <select
-                value={studentId}
-                onChange={(e) => setStudentId(Number(e.target.value))}
-                className="text-sm border border-slate-200 rounded-xl px-3 py-2 min-w-[200px]"
+                value={students.length === 0 ? "" : String(studentId)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setStudentId(v ? Number(v) : 0);
+                }}
+                disabled={students.length === 0}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2 min-w-[200px] disabled:opacity-60"
                 style={{ color: "#1E293B" }}
               >
                 {students.length === 0 ? (
-                  <option value={1}>Student 1 (load API for list)</option>
+                  <option value="">
+                    {studentsLoadError ? "API error — check console / backend" : "No students (start API & DB)"}
+                  </option>
                 ) : (
                   students.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                    <option key={s.id} value={s.id}>
+                      {s.class_name ? `${s.name} (${s.class_name})` : s.name}
+                    </option>
                   ))
                 )}
               </select>
@@ -101,7 +118,7 @@ export function Reports() {
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={generating}
+              disabled={generating || students.length === 0 || studentId <= 0}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all disabled:opacity-50"
               style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
             >
@@ -122,6 +139,11 @@ export function Reports() {
           )}
           {genError && (
             <p className="text-sm p-3 rounded-xl" style={{ backgroundColor: "#FEE2E2", color: "#991B1B" }}>{genError}</p>
+          )}
+          {studentsLoadError && (
+            <p className="text-sm p-3 rounded-xl" style={{ backgroundColor: "#FEF3C7", color: "#92400E" }}>
+              {studentsLoadError} — dev: Vite proxies <code className="text-xs">/api</code> to port 8000.
+            </p>
           )}
         </div>
 

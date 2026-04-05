@@ -40,7 +40,30 @@ def patch_draft_report(
     )
 
 
-def students_for_dropdown() -> list[dict[str, Any]]:
+def students_for_dropdown(
+    *,
+    query_teacher_id: int | None = None,
+    query_class_ids: list[int] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Students the teacher can generate reports for.
+    Scoped by `TEACHER_ID` / `TEACHER_CLASS_IDS` in .env, or `?teacher_id=` / `?class_ids=1,2`.
+    """
+    from app.ai.config import Config
     from app.ai.repository import list_students_brief
 
-    return list_students_brief()
+    tid = (
+        query_teacher_id
+        if query_teacher_id is not None
+        else Config.TEACHER_ID
+    )
+    if query_class_ids is not None:
+        cids = query_class_ids
+    else:
+        cids = Config.teacher_class_ids_list()
+    cids_arg: list[int] | None = cids if cids else None
+
+    return list_students_brief(
+        filter_teacher_id=tid,
+        filter_class_ids=cids_arg,
+    )

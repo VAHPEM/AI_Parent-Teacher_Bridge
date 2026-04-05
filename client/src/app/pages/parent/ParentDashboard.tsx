@@ -33,24 +33,29 @@ export function ParentDashboard() {
   const { activeChild: student } = useActiveChild();
   const [liveSummary, setLiveSummary] = useState<string | null>(null);
   const [reportFetchError, setReportFetchError] = useState<string | null>(null);
+  const [noApprovedReport, setNoApprovedReport] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setLiveSummary(null);
     setReportFetchError(null);
-    fetchParentReport(student.id)
+    setNoApprovedReport(false);
+    fetchParentReport(student.studentId)
       .then((report) => {
         if (cancelled) return;
-        setLiveSummary(report?.summary?.trim() ? report.summary : null);
+        const s = report?.summary?.trim() ?? "";
+        setLiveSummary(s || null);
+        setNoApprovedReport(!report || !s);
       })
       .catch((e) => {
         if (cancelled) return;
         setReportFetchError(e instanceof Error ? e.message : "Failed to load report");
+        setNoApprovedReport(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [student.id]);
+  }, [student.studentId]);
 
   const mockInsight =
     student.id === 1
@@ -117,6 +122,13 @@ export function ParentDashboard() {
               {reportFetchError ? (
                 <span className="block mt-1 text-amber-900">
                   Could not load live report ({reportFetchError}). Showing demo text below.
+                </span>
+              ) : null}
+              {noApprovedReport && !reportFetchError ? (
+                <span className="block mt-1 text-slate-600">
+                  No teacher-approved AI report for this child in the database yet (or{" "}
+                  <code className="text-xs bg-white/60 px-1 rounded">studentId</code> does not match your seed).
+                  Demo insight below.
                 </span>
               ) : null}
               {liveSummary || mockInsight}

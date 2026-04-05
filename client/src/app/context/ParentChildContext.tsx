@@ -1,7 +1,20 @@
 import { createContext, useContext, useState } from "react";
 
+function apiStudentIdFromEnv(
+  key: "VITE_PARENT_API_STUDENT_ID_1" | "VITE_PARENT_API_STUDENT_ID_2",
+  fallback: number
+): number {
+  const raw = import.meta.env[key];
+  if (raw === undefined || raw === "") return fallback;
+  const n = Number.parseInt(String(raw), 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 export interface ChildProfile {
+  /** Stable UI key / local state (switcher). */
   id: number;
+  /** `students.id` in Postgres for `/parent/*` and `/parent/chat/*`. */
+  studentId: number;
   name: string;
   firstName: string;
   initials: string;
@@ -43,6 +56,7 @@ export interface ChildProfile {
 export const children: ChildProfile[] = [
   {
     id: 1,
+    studentId: apiStudentIdFromEnv("VITE_PARENT_API_STUDENT_ID_1", 1),
     name: "Noah Williams",
     firstName: "Noah",
     initials: "NW",
@@ -114,6 +128,7 @@ export const children: ChildProfile[] = [
   },
   {
     id: 2,
+    studentId: apiStudentIdFromEnv("VITE_PARENT_API_STUDENT_ID_2", 2),
     name: "Ella Williams",
     firstName: "Ella",
     initials: "EW",

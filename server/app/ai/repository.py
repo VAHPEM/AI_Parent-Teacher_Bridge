@@ -1,8 +1,13 @@
 import os
 from typing import Any
 
+import logging
+
 import psycopg2
+from psycopg2 import errors as pg_errors
 from psycopg2.extras import Json
+
+logger = logging.getLogger(__name__)
 
 from app.ai.config import Config
 
@@ -19,6 +24,99 @@ def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
 
 
+def pgvector_try_register(conn) -> bool:
+    """Register pgvector types on this connection (safe no-op if unavailable)."""
+    try:
+        from pgvector.psycopg2 import register_vector
+    except ImportError:
+        return False
+    try:
+        register_vector(conn)
+        return True
+    except Exception:
+        return False
+
+
+def ai_reports_vector_column_exists(conn) -> bool:
+    try:
+        with conn.cursor() as cur:
+            return _ai_reports_summary_embedding_column_on_cursor(cur)
+    except Exception:
+        return False
+
+
+def _ai_reports_summary_embedding_column_on_cursor(cur) -> bool:
+    cur.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'ai_reports'
+              AND column_name = 'summary_embedding'
+        )
+        """
+    )
+    row = cur.fetchone()
+    return bool(row and row[0])
+
+
+def search_similar_ai_reports_excerpts(
+    embedding: list[float],
+    *,
+    student_id: int,
+    top_k: int,
+    exclude_report_id: int | None = None,
+) -> str:
+    """
+    Cosine nearest neighbours among teacher-approved reports for one student.
+    Used for report generation (prior weeks) and optional parent-chat context.
+    """
+    from app.ai.report_embeddings import format_stored_report_excerpt
+
+    conn = get_db_connection()
+    try:
+        if not pgvector_try_register(conn):
+            return ""
+        if not ai_reports_vector_column_exists(conn):
+            return ""
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT week_number, term, summary, strengths, support_areas, recommendations
+                    FROM ai_reports
+                    WHERE teacher_approved = true
+                      AND student_id = %s
+                      AND summary_embedding IS NOT NULL
+                      AND (%s IS NULL OR id <> %s)
+                    ORDER BY summary_embedding <=> %s
+                    LIMIT %s
+                    """,
+                    (
+                        student_id,
+                        exclude_report_id,
+                        exclude_report_id,
+                        embedding,
+                        top_k,
+                    ),
+                )
+                rows = cur.fetchall()
+        except Exception as e:
+            logger.warning("search_similar_ai_reports_excerpts failed: %s", e)
+            return ""
+    finally:
+        conn.close()
+
+    blocks: list[str] = []
+    for row in rows:
+        blocks.append(
+            format_stored_report_excerpt(
+                row[0], row[1], row[2], row[3], row[4], row[5]
+            )
+        )
+    return "\n\n---\n\n".join(blocks) if blocks else ""
+
+
 def get_all_student_ids() -> list[int]:
     conn = get_db_connection()
     try:
@@ -30,13 +128,72 @@ def get_all_student_ids() -> list[int]:
         conn.close()
 
 
-def list_students_brief() -> list[dict[str, Any]]:
+def list_students_brief(
+    *,
+    filter_teacher_id: int | None = None,
+    filter_class_ids: list[int] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Rows for the teacher report dropdown: `{id, name, class_name}`.
+    If `filter_teacher_id` is set, restrict to students in classes with `classes.teacher_id`
+    (column must exist — see server/migrations/add_classes_teacher_id.sql).
+    Else if `filter_class_ids` is non-empty, restrict to those `students.class_id` values.
+    Else return all students (joined with class for display).
+    """
     conn = get_db_connection()
     try:
+        if filter_teacher_id is not None:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT s.id, s.name, c.name
+                        FROM students s
+                        JOIN classes c ON s.class_id = c.id
+                        WHERE c.teacher_id = %s
+                        ORDER BY c.name, s.name
+                        """,
+                        (filter_teacher_id,),
+                    )
+                    rows = cur.fetchall()
+                    return [
+                        {"id": r[0], "name": r[1], "class_name": r[2]}
+                        for r in rows
+                    ]
+            except pg_errors.UndefinedColumn:
+                conn.rollback()
+                logger.warning(
+                    "classes.teacher_id missing — ignoring teacher filter. "
+                    "Run server/migrations/add_classes_teacher_id.sql or use TEACHER_CLASS_IDS."
+                )
+
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name FROM students ORDER BY id")
+            if filter_class_ids:
+                placeholders = ",".join(["%s"] * len(filter_class_ids))
+                cur.execute(
+                    f"""
+                    SELECT s.id, s.name, COALESCE(c.name, '')
+                    FROM students s
+                    LEFT JOIN classes c ON s.class_id = c.id
+                    WHERE s.class_id IN ({placeholders})
+                    ORDER BY c.name NULLS LAST, s.name
+                    """,
+                    tuple(filter_class_ids),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT s.id, s.name, COALESCE(c.name, '')
+                    FROM students s
+                    LEFT JOIN classes c ON s.class_id = c.id
+                    ORDER BY c.name NULLS LAST, s.name
+                    """
+                )
             rows = cur.fetchall()
-            return [{"id": r[0], "name": r[1]} for r in rows]
+            return [
+                {"id": r[0], "name": r[1], "class_name": r[2] or None}
+                for r in rows
+            ]
     finally:
         conn.close()
 
@@ -242,6 +399,18 @@ def save_ai_report(
                 ),
             )
             report_id = cur.fetchone()[0]
+            if teacher_ok and _ai_reports_summary_embedding_column_on_cursor(cur):
+                pgvector_try_register(conn)
+                from app.ai.report_embeddings import sync_ai_report_embedding
+
+                try:
+                    sync_ai_report_embedding(cur, report_id)
+                except Exception as e:
+                    logger.warning(
+                        "ai_reports.summary_embedding sync failed for id=%s: %s",
+                        report_id,
+                        e,
+                    )
         conn.commit()
         return report_id
     finally:
@@ -268,6 +437,18 @@ def set_report_teacher_approved(
                 (sent_to_parent, status, report_id),
             )
             updated = cur.rowcount > 0
+            if updated and _ai_reports_summary_embedding_column_on_cursor(cur):
+                pgvector_try_register(conn)
+                from app.ai.report_embeddings import sync_ai_report_embedding
+
+                try:
+                    sync_ai_report_embedding(cur, report_id)
+                except Exception as e:
+                    logger.warning(
+                        "summary_embedding sync after approve failed id=%s: %s",
+                        report_id,
+                        e,
+                    )
         conn.commit()
         return updated
     finally:

@@ -1,39 +1,23 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Send, Bot, AlertCircle, Sparkles } from "lucide-react";
 import { useActiveChild } from "../../context/ParentChildContext";
 import { postParentChat } from "../../lib/api";
 
-const aiResponses: Record<string, string> = {
-  default: "Hi! I'm the EduTrack AI assistant. I can help you with Noah's learning progress, suggest home activities, or explain assessment results. What would you like to know?",
-  grade: "Noah received a C+ in Mathematics this week (Week 8, Term 2). His score was 62% — an improvement from last week's C grade, particularly in basic operations. Keep encouraging him!",
-  math: "For Mathematics: Noah is at C+ (62%) in Week 8. I recommend: daily times tables practice (10 mins), the Khan Academy Kids app, and real-world maths like counting items at the supermarket.",
-  english: "For English: Noah received a C in Week 8. I recommend: reading together for 15 minutes each evening, practising retelling stories in his own words, and using vocabulary flashcards for new words.",
-  homework: "Based on Noah's current assessments, I recommend: 1) Daily times tables practice (10 mins), 2) Reading together for 15 minutes each evening, 3) Khan Academy Kids app for engaging maths practice.",
-  wellbeing: "I understand this is an important concern. For student wellbeing and safety matters, I'd recommend posting a question to Ms. Thompson directly in the 'Ask a Teacher' section so she can respond personally.",
-  bullying: "This needs to be handled directly by the teacher. Please use the 'Ask a Teacher' section to post this question to Ms. Thompson — she'll be notified immediately and can respond with full context.",
-  extension: "This question requires teacher assessment. Based on Noah's current grades (C/C+), I don't have enough data to make this recommendation. Try asking Ms. Thompson via 'Ask a Teacher'.",
-  science: "For Science: Noah received a B in Week 8 — great effort! I recommend: simple home experiments, watching science documentaries together, and keeping a science observation journal.",
-};
-
-function getAIResponse(input: string): string {
-  const lower = input.toLowerCase();
-  if (lower.includes("bullying") || lower.includes("bully") || lower.includes("mean")) return aiResponses.bullying;
-  if (lower.includes("wellbeing") || lower.includes("upset") || lower.includes("sad")) return aiResponses.wellbeing;
-  if (lower.includes("maths") || lower.includes("math") || lower.includes("multiplication") || lower.includes("number")) return aiResponses.math;
-  if (lower.includes("english") || lower.includes("reading") || lower.includes("writing") || lower.includes("comprehension")) return aiResponses.english;
-  if (lower.includes("science")) return aiResponses.science;
-  if (lower.includes("homework") || lower.includes("home") || lower.includes("activities") || lower.includes("practise")) return aiResponses.homework;
-  if (lower.includes("grade") || lower.includes("score") || lower.includes("result") || lower.includes("mark")) return aiResponses.grade;
-  if (lower.includes("extension") || lower.includes("gifted") || lower.includes("advanced")) return aiResponses.extension;
-  return "Thanks for your question! Based on Noah's learning data, I'd recommend continuing the daily reading and maths activities. If you have a specific question about a subject or assessment, I'm happy to help with more detail!";
+function defaultGreeting(firstName: string): string {
+  return `Hi! I'm the EduTrack AI assistant. I answer from ${firstName}'s teacher-approved report when the server is connected. I can also suggest general ideas for home learning. What would you like to know?`;
 }
 
-const suggestedQuestions = [
-  "How is Noah going in Maths?",
-  "What home activities should I do with Noah?",
-  "How is his English going?",
-  "How is his Science going?",
-];
+/** Offline fallback only — must not invent grades or another child's name. */
+function getOfflineResponse(input: string, firstName: string): string {
+  const lower = input.toLowerCase();
+  if (lower.includes("bullying") || lower.includes("bully") || lower.includes("mean")) {
+    return "This needs to be handled directly by the teacher. Please use the 'Ask a Teacher' section so the teacher can respond with full context.";
+  }
+  if (lower.includes("wellbeing") || lower.includes("upset") || lower.includes("sad")) {
+    return "For wellbeing and safety matters, please use 'Ask a Teacher' so the teacher can respond personally.";
+  }
+  return `I couldn't load the live assistant. When it works, answers for ${firstName} come only from that child's approved report — try again after the API is running, or ask the teacher in 'Ask a Teacher'.`;
+}
 
 interface Message {
   id: number;
@@ -44,13 +28,30 @@ interface Message {
 
 export function ParentAIChat() {
   const { activeChild: student } = useActiveChild();
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, from: "ai", content: aiResponses.default, timestamp: "Just now" }
+  const [messages, setMessages] = useState<Message[]>(() => [
+    { id: 1, from: "ai", content: defaultGreeting(student.firstName), timestamp: "Just now" },
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(100);
+
+  const suggestedQuestions = useMemo(
+    () => [
+      `How is ${student.firstName} going in Maths?`,
+      `What home activities help ${student.firstName}?`,
+      `How is ${student.firstName}'s English going?`,
+      `How is ${student.firstName}'s Science going?`,
+    ],
+    [student.firstName],
+  );
+
+  useEffect(() => {
+    setMessages([
+      { id: 1, from: "ai", content: defaultGreeting(student.firstName), timestamp: "Just now" },
+    ]);
+    nextId.current = 100;
+  }, [student.id, student.studentId, student.firstName]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,7 +68,7 @@ export function ParentAIChat() {
     setInput("");
     setTyping(true);
     try {
-      const reply = await postParentChat(student.id, question);
+      const reply = await postParentChat(student.studentId, question);
       const aiId = nextId.current++;
       setMessages((prev) => [
         ...prev,
@@ -82,7 +83,7 @@ export function ParentAIChat() {
       ]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Request failed";
-      const fallback = getAIResponse(question);
+      const fallback = getOfflineResponse(question, student.firstName);
       const aiId = nextId.current++;
       setMessages((prev) => [
         ...prev,
@@ -133,11 +134,11 @@ export function ParentAIChat() {
             {suggestedQuestions.map(q => (
               <button
                 key={q}
-                onClick={() => handleSend(q.replace(/Noah/g, student.firstName).replace(/\bhis\b/g, student.firstName === 'Ella' ? 'her' : 'his'))}
+                onClick={() => handleSend(q)}
                 className="text-xs px-3 py-1.5 rounded-full border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
                 style={{ color: "#64748B" }}
               >
-                {q.replace(/Noah/g, student.firstName).replace(/\bhis\b/g, student.firstName === 'Ella' ? 'her' : 'his')}
+                {q}
               </button>
             ))}
           </div>
@@ -164,7 +165,7 @@ export function ParentAIChat() {
                     boxShadow: msg.from === "ai" ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
                   }}
                 >
-                  {msg.content.replace(/Noah/g, student.firstName).replace(/\bhis\b/g, student.firstName === 'Ella' ? 'her' : 'his').replace(/\bHis\b/g, student.firstName === 'Ella' ? 'Her' : 'His')}
+                  {msg.content}
                 </div>
                 <span className="text-xs mt-1" style={{ color: "#94A3B8" }}>{msg.timestamp}</span>
               </div>

@@ -17,9 +17,21 @@ function getBaseUrl(): string {
 
 async function parseError(res: Response): Promise<string> {
   try {
-    const j = (await res.json()) as { detail?: string | string[] };
+    const j = (await res.json()) as {
+      detail?: string | string[] | { msg?: string }[];
+    };
     if (typeof j.detail === "string") return j.detail;
-    if (Array.isArray(j.detail)) return j.detail.map((d) => String(d)).join(", ");
+    if (Array.isArray(j.detail)) {
+      return j.detail
+        .map((d) =>
+          typeof d === "string"
+            ? d
+            : typeof d === "object" && d && "msg" in d && typeof d.msg === "string"
+              ? d.msg
+              : JSON.stringify(d)
+        )
+        .join(", ");
+    }
   } catch {
     /* ignore */
   }
@@ -102,7 +114,12 @@ export async function postParentChat(
 
 // --- Teacher: AI reports workflow ---
 
-export type StudentBrief = { id: number; name: string };
+export type StudentBrief = {
+  id: number;
+  name: string;
+  /** Present when joined from `classes` (teacher roster / labels). */
+  class_name?: string | null;
+};
 
 export type PendingAiReportDto = {
   id: number;
@@ -118,8 +135,15 @@ export type PendingAiReportDto = {
   status: string | null;
 };
 
-export async function fetchTeacherStudents(): Promise<StudentBrief[]> {
-  const { body } = await apiGetJson<StudentBrief[]>("/teacher/students");
+export async function fetchTeacherStudents(params?: {
+  teacherId?: number;
+  classIds?: string;
+}): Promise<StudentBrief[]> {
+  const q = new URLSearchParams();
+  if (params?.teacherId != null) q.set("teacher_id", String(params.teacherId));
+  if (params?.classIds?.trim()) q.set("class_ids", params.classIds.trim());
+  const suffix = q.toString() ? `?${q}` : "";
+  const { body } = await apiGetJson<StudentBrief[]>(`/teacher/students${suffix}`);
   return Array.isArray(body) ? body : [];
 }
 

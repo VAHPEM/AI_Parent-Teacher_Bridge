@@ -1,7 +1,11 @@
 """
-RAG via FAISS under server/app/ai/data/.
+RAG sources (when RAG_ENABLED):
 
-Ingest: python -m app.ai.ingest_rag (from server/). Requires faiss-cpu, numpy, CURRICULLM_API_KEY.
+1) **Postgres + pgvector** on `ai_reports.summary_embedding` — auto-updated when reports
+   are saved/edited; similarity search over the same student's prior **teacher-approved**
+   reports (see server/migrations/add_ai_report_summary_embedding.sql).
+
+2) Optional **file FAISS** under `server/app/ai/data/` — `python -m app.ai.ingest_rag`.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ except ImportError:  # pragma: no cover
     _FAISS_AVAILABLE = False
 
 _store_cache: dict[str, Any] | None = None
+_missing_store_warned: bool = False
 
 
 def _index_path() -> Path:
@@ -38,6 +43,25 @@ def _index_path() -> Path:
 
 def _chunks_path() -> Path:
     return Path(Config.RAG_CHUNKS_JSON_PATH)
+
+
+def _rag_store_files_present() -> bool:
+    return _index_path().is_file() and _chunks_path().is_file()
+
+
+def _warn_rag_store_missing_once() -> None:
+    global _missing_store_warned
+    if _missing_store_warned:
+        return
+    _missing_store_warned = True
+    logger.warning(
+        "RAG is enabled but no vector index is built yet. Expected files:\n"
+        "  %s\n  %s\n"
+        "From the `server` directory run (after adding .txt/.md under app/ai/data/rag/):\n"
+        "  python -m app.ai.ingest_rag",
+        _index_path(),
+        _chunks_path(),
+    )
 
 
 def _load_store() -> tuple[Any, list[dict[str, Any]]] | None:
@@ -60,19 +84,30 @@ def _load_store() -> tuple[Any, list[dict[str, Any]]] | None:
 
 
 def _embedding_client() -> OpenAI:
-    if not Config.CURRICULLM_API_KEY:
-        raise ValueError("CURRICULLM_API_KEY is required for embeddings")
-    return OpenAI(
-        api_key=Config.CURRICULLM_API_KEY,
-        base_url=Config.CURRICULLM_BASE_URL,
-    )
+    key = Config.EMBEDDING_API_KEY or Config.CURRICULLM_API_KEY
+    if not key:
+        raise ValueError(
+            "Set CURRICULLM_API_KEY or EMBEDDING_API_KEY for embeddings / RAG"
+        )
+    return OpenAI(api_key=key, base_url=Config.EMBEDDING_BASE_URL)
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
     client = _embedding_client()
-    resp = client.embeddings.create(model=Config.EMBEDDING_MODEL, input=texts)
+    try:
+        resp = client.embeddings.create(
+            model=Config.EMBEDDING_MODEL, input=texts
+        )
+    except Exception as e:
+        logger.warning(
+            "Embeddings API failed (%s). Many chat-only gateways return 404 here — "
+            "use an OpenAI-compatible base URL that supports POST /v1/embeddings, "
+            "or set EMBEDDING_MODEL to a model your host provides. RAG ingest/search need this.",
+            e,
+        )
+        raise
     data = sorted(resp.data, key=lambda d: d.index)
     return [list(d.embedding) for d in data]
 
@@ -80,6 +115,20 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 def embed_query(text: str) -> list[float]:
     vectors = embed_texts([text])
     return vectors[0] if vectors else []
+
+
+def l2_normalize_embedding(emb: list[float]) -> list[float]:
+    """Match FAISS inner-product + pgvector cosine distance conventions."""
+    try:
+        import numpy as np
+
+        a = np.array(emb, dtype=np.float32)
+        n = float(np.linalg.norm(a))
+        if n > 0:
+            a = a / n
+        return a.tolist()
+    except Exception:
+        return emb
 
 
 def _build_rag_query(student_payload: dict[str, Any]) -> str:
@@ -146,19 +195,12 @@ def retrieve_rag_context(student_payload: dict[str, Any]) -> str:
     if not Config.RAG_ENABLED:
         return ""
 
-    if not _FAISS_AVAILABLE:
-        logger.warning(
-            "RAG skipped: faiss-cpu and numpy are not installed "
-            "(pip install faiss-cpu numpy)"
-        )
-        return ""
-
     query_text = _build_rag_query(student_payload)
     if not query_text:
         return ""
 
     try:
-        embedding = embed_query(query_text)
+        embedding = l2_normalize_embedding(embed_query(query_text))
     except Exception as e:
         logger.warning("RAG embedding failed (continuing without RAG): %s", e)
         return ""
@@ -166,23 +208,39 @@ def retrieve_rag_context(student_payload: dict[str, Any]) -> str:
     if not embedding:
         return ""
 
-    out = _search_faiss_with_embedding(embedding)
-    if not out and (
-        not _index_path().is_file() or not _chunks_path().is_file()
-    ):
-        logger.warning(
-            "RAG skipped: missing FAISS index or chunks JSON at %s / %s — run python -m app.ai.ingest_rag",
-            _index_path(),
-            _chunks_path(),
-        )
-    return out
+    chunks: list[str] = []
+
+    if Config.RAG_USE_AI_REPORTS_PG:
+        try:
+            from app.ai.repository import search_similar_ai_reports_excerpts
+
+            sid = int(student_payload["student"]["student_id"])
+            pg = search_similar_ai_reports_excerpts(
+                embedding,
+                student_id=sid,
+                top_k=Config.RAG_TOP_K,
+                exclude_report_id=None,
+            )
+            if pg:
+                chunks.append(pg)
+        except Exception as e:
+            logger.warning("Postgres report-vector RAG failed: %s", e)
+
+    if _FAISS_AVAILABLE and _rag_store_files_present():
+        fctx = _search_faiss_with_embedding(embedding)
+        if fctx:
+            chunks.append(fctx)
+
+    return "\n\n---\n\n".join(chunks) if chunks else ""
 
 
-def retrieve_kb_for_text_query(query_text: str) -> str:
+def retrieve_kb_for_text_query(
+    query_text: str,
+    *,
+    student_id: int | None = None,
+    exclude_report_id: int | None = None,
+) -> str:
     if not Config.RAG_ENABLED:
-        return ""
-
-    if not _FAISS_AVAILABLE:
         return ""
 
     query_text = query_text.strip()
@@ -190,12 +248,37 @@ def retrieve_kb_for_text_query(query_text: str) -> str:
         return ""
 
     try:
-        embedding = embed_query(query_text)
+        embedding = l2_normalize_embedding(embed_query(query_text))
     except Exception as e:
         logger.warning("Parent-chat KB embedding failed (continuing without KB): %s", e)
         return ""
 
     if not embedding:
+        return ""
+
+    if (
+        student_id is not None
+        and Config.RAG_USE_AI_REPORTS_PG
+    ):
+        try:
+            from app.ai.repository import search_similar_ai_reports_excerpts
+
+            pg = search_similar_ai_reports_excerpts(
+                embedding,
+                student_id=student_id,
+                top_k=Config.RAG_TOP_K,
+                exclude_report_id=exclude_report_id,
+            )
+            if pg:
+                return pg
+        except Exception as e:
+            logger.warning("Postgres parent KB RAG failed: %s", e)
+
+    if not _FAISS_AVAILABLE:
+        return ""
+
+    if not _rag_store_files_present():
+        _warn_rag_store_missing_once()
         return ""
 
     return _search_faiss_with_embedding(embedding)

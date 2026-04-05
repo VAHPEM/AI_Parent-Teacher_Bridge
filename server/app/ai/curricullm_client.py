@@ -106,6 +106,7 @@ class CurricuLLMClient:
         self,
         *,
         student_name: str,
+        student_id: int,
         approved_report_text: str,
         optional_kb_excerpts: str | None,
         parent_message: str,
@@ -114,14 +115,18 @@ class CurricuLLMClient:
             "You help parents understand their child's progress at school. "
             "The section APPROVED_TEACHER_REPORT is the only authoritative source for facts "
             "about this child's progress, strengths, support areas, and recommendations. "
-            "If optional reference excerpts are provided, you may use them for general guidance "
-            "that does not contradict the approved report. "
+            "You are answering ONLY about the one student named in the user message (see STUDENT_CONTEXT). "
+            "Never mention or discuss any other student by name (no classmates, no examples of other children). "
+            "Optional reference excerpts are generic school guidance only: do not treat them as facts about this student "
+            "and do not pull other children's names from them. "
             "If the parent asks something not covered in the approved report, say you do not "
             "have that information and suggest they message the teacher. "
             "Use warm, clear, non-judgmental language. Do not invent grades, events, or teacher quotes."
         )
         parts: list[str] = [
-            f"Student name: {student_name}",
+            "### STUDENT_CONTEXT",
+            f"The parent's child is {student_name} (internal student_id={student_id}). "
+            f"Every fact you state about progress must come from APPROVED_TEACHER_REPORT for this student only.",
             "",
             "### APPROVED_TEACHER_REPORT",
             approved_report_text.strip(),
@@ -139,7 +144,7 @@ class CurricuLLMClient:
 
         response = self.client.chat.completions.create(
             model=self.model,
-            temperature=0.3,
+            temperature=0.2,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user_content},

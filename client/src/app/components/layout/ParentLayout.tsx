@@ -68,11 +68,10 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
           <p className="text-xs px-5 pt-3 pb-2" style={{ color: "#64748B", fontWeight: 500 }}>MY CHILDREN</p>
           {allChildren.map(child => {
             const isActive = child.id === activeChild.id;
-            console.log("Rendering child:", child.name, "Active:", child.id, "ActiveChild:", isActive);
             return (
               <button
                 key={child.id}
-                onClick={() => { console.log(child.id); setActiveChildId(child.id); }}
+                onClick={() => setActiveChildId(child.id)}
                 className="w-full flex items-center gap-3 px-5 py-2.5 transition-colors text-left"
                 style={{ backgroundColor: isActive ? "#D1FAE5" : "transparent" }}
               >
@@ -86,7 +85,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
                   <p className="text-sm truncate" style={{ fontWeight: 600, color: isActive ? "#065F46" : "#1E293B" }}>
                     {child.name}
                   </p>
-                  <p className="text-xs" style={{ color: "#64748B" }}>Year {child.class} · {child.teacher}</p>
+                  <p className="text-xs" style={{ color: "#64748B" }}>{child.year} · Class {child.class} · {child.teacher}</p>
                 </div>
                 {isActive && (
                   <span className="text-xs px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#10B981", color: "white", fontWeight: 600 }}>
@@ -157,7 +156,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             <div className="hidden sm:block">
               <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>Greenwood Primary School</p>
               <p className="text-xs" style={{ color: "#64748B" }}>
-                Viewing: <span style={{ color: activeChild.color, fontWeight: 600 }}>{activeChild.name}</span> · Year {activeChild.class} · {activeChild.teacher}
+                Viewing: <span style={{ color: activeChild.color, fontWeight: 600 }}>{activeChild.name}</span> · {activeChild.year} · Class {activeChild.class} · {activeChild.teacher}
               </p>
             </div>
           </div>
@@ -184,7 +183,13 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
         </main>
       </div>
 
-      <AIChatbot open={chatOpen} onToggle={() => setChatOpen(!chatOpen)} portal="parent" />
+      <AIChatbot
+        open={chatOpen}
+        onToggle={() => setChatOpen(!chatOpen)}
+        portal="parent"
+        parentStudentId={activeChild.studentId}
+        parentFirstName={activeChild.firstName}
+      />
     </div>
   );
 }
