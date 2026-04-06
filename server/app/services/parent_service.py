@@ -31,6 +31,13 @@ LEVEL_MAP = {
     "E":  ("Below Expected", "#EF4444", "#FEE2E2"),
 }
 
+def _activity_confidence_out(raw: str | None) -> str:
+    s = str(raw or "medium").strip().lower()
+    if s in ("low", "medium", "high"):
+        return s
+    return "medium"
+
+
 RECENT_ACTIVITY = [
     {"type": "report",  "text": "Week 8 Mathematics report added",           "time": "2 hours ago"},
     {"type": "message", "text": "Ms. Thompson replied to your question",      "time": "Yesterday"},
@@ -338,7 +345,7 @@ class ParentService:
                 "questions":     [],
                 "aiGenerated":   True,
                 "curriculumRef": a.curriculum_ref,
-                "confidence":    "medium",
+                "confidence":    _activity_confidence_out(a.confidence),
                 "completed":     a.completed,
             })
 

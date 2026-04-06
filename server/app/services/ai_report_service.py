@@ -242,6 +242,13 @@ def _resolve_subject_id(db: Session, subject_hint: Any) -> int | None:
     return row.id if row else None
 
 
+def _normalize_activity_confidence(raw: Any) -> str:
+    s = str(raw or "").strip().lower()
+    if s in ("low", "medium", "high"):
+        return s
+    return "medium"
+
+
 def _persist_activities_for_report(
     db: Session,
     report: AIReport,
@@ -268,6 +275,7 @@ def _persist_activities_for_report(
         cref = ref or (report_curriculum_ref or "") or ""
         cref = cref.strip()[:255] if cref else None
         title = str(it.get("title") or "").strip() or "Learning activity"
+        conf = _normalize_activity_confidence(it.get("confidence"))
         db.add(
             Activity(
                 student_id=sid,
@@ -280,6 +288,7 @@ def _persist_activities_for_report(
                 description=desc or None,
                 steps=steps or None,
                 curriculum_ref=cref,
+                confidence=conf,
             )
         )
 

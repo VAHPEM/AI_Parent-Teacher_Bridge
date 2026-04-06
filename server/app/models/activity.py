@@ -17,5 +17,6 @@ class Activity(Base):
     description    = Column(Text)
     steps          = Column(JSONB)
     curriculum_ref = Column(String(255))
+    confidence     = Column(String(20), default="medium")
     completed      = Column(Boolean, default=False)
     created_at     = Column(TIMESTAMP, server_default=func.now())

@@ -41,6 +41,12 @@ def apply_schema_patches(eng) -> None:
         conn.execute(
             text("ALTER TABLE ai_reports ADD COLUMN IF NOT EXISTS teacher_notes TEXT")
         )
+        conn.execute(
+            text(
+                "ALTER TABLE activities ADD COLUMN IF NOT EXISTS confidence VARCHAR(20) "
+                "DEFAULT 'medium'"
+            )
+        )
 
 
 def get_db():
