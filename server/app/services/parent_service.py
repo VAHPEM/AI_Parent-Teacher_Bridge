@@ -164,55 +164,60 @@ class ParentService:
 
         pref_lang = ParentService._get_parent_language(db, student.parent_id)
 
-        latest_week = (
-            db.query(func.max(WeeklyRecord.week_number))
-            .filter(WeeklyRecord.student_id == student_id)
-            .scalar() or 8
+        # For each week, get the latest (highest id) AI report
+        max_id_per_week = (
+            db.query(func.max(AIReport.id).label("max_id"))
+            .filter(AIReport.student_id == student_id, AIReport.teacher_approved == True)
+            .group_by(AIReport.week_number)
+            .subquery()
         )
-
-        records = (
-            db.query(WeeklyRecord)
-            .filter(WeeklyRecord.student_id == student_id, WeeklyRecord.week_number == latest_week)
+        weekly_reports = (
+            db.query(AIReport)
+            .filter(AIReport.id.in_(max_id_per_week))
+            .order_by(AIReport.week_number)
             .all()
         )
 
-        report = (
-            db.query(AIReport)
-            .filter(AIReport.student_id == student_id, AIReport.week_number == latest_week)
-            .first()
-        )
-
-        recent_reports = []
-        for r in records:
-            recs = list(report.recommendations or []) if report else []
-            all_records_for_subject = (
+        # Build per-week overall entries
+        weekly_averages: list[float | None] = []
+        for rpt in weekly_reports:
+            records = (
                 db.query(WeeklyRecord)
-                .filter(WeeklyRecord.student_id == student_id, WeeklyRecord.subject == r.subject)
-                .order_by(WeeklyRecord.week_number)
+                .filter(
+                    WeeklyRecord.student_id == student_id,
+                    WeeklyRecord.week_number == rpt.week_number,
+                )
                 .all()
             )
-            trend = _trend_from_records(all_records_for_subject)
-            obs = (
-                db.query(WeeklyObservation)
-                .filter(
-                    WeeklyObservation.student_id == student_id,
-                    WeeklyObservation.week_number == latest_week,
-                )
-                .first()
-            )
-            comment = obs.teacher_comment if obs else r.teacher_comment or ""
+            scores = [float(r.score) for r in records if r.score is not None]
+            weekly_averages.append(sum(scores) / len(scores) if scores else None)
+
+        recent_reports = []
+        for i, rpt in enumerate(weekly_reports):
+            avg = weekly_averages[i]
+            grade = _grade_from_score(avg)
+            # Trend: compare this week's avg to previous week's avg
+            if i == 0 or weekly_averages[i - 1] is None or avg is None:
+                trend = "stable"
+            else:
+                diff = avg - weekly_averages[i - 1]
+                trend = "up" if diff > 5 else ("down" if diff < -5 else "stable")
+
             recent_reports.append({
-                "subject":           r.subject,
-                "grade":             _grade_from_score(r.score),
-                "trend":             trend,
-                "comment":           comment,
-                "aiRecommendations": recs[:3],
-                "week":              f"Week {r.week_number}",
+                "week":            f"Week {rpt.week_number}",
+                "grade":           grade,
+                "trend":           trend,
+                "summary":         rpt.summary or "",
+                "recommendations": list(rpt.recommendations or [])[:3],
+                "strengths":       list(rpt.strengths or [])[:2],
+                "riskLevel":       rpt.risk_level or "low",
             })
 
+        # AI insight from the latest week's report
+        latest_report = weekly_reports[-1] if weekly_reports else None
         ai_insight = (
-            report.summary
-            if report
+            latest_report.summary
+            if latest_report
             else f"{student.name.split()[0]} is making progress this term."
         )
 
@@ -321,7 +326,11 @@ class ParentService:
 
         rows = (
             db.query(Activity)
-            .filter(Activity.student_id == student_id)
+            .join(AIReport, Activity.ai_report_id == AIReport.id)
+            .filter(
+                Activity.student_id == student_id,
+                AIReport.teacher_approved == True,
+            )
             .order_by(Activity.id)
             .all()
         )

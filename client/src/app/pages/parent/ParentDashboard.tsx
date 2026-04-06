@@ -26,8 +26,18 @@ const activityMeta: Record<string, { icon: React.ReactNode; color: string; bg: s
   ai:      { icon: <Sparkles size={14} />,     color: "#8B5CF6", bg: "#EDE9FE" },
 };
 
+interface WeekReport {
+  week: string;
+  grade: string;
+  trend: string;
+  summary: string;
+  recommendations: string[];
+  strengths: string[];
+  riskLevel: string;
+}
+
 interface DashboardData {
-  recentReports: { subject: string; grade: string; trend: string; comment: string; aiRecommendations: string[]; week: string }[];
+  recentReports: WeekReport[];
   recentActivity: { type: string; text: string; time: string }[];
   upcomingEvents: { title: string; date: string; type: string }[];
   aiInsight: string;
@@ -120,10 +130,10 @@ export function ParentDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Subject reports */}
+          {/* Overall weekly reports */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 style={{ fontWeight: 600, color: "#1E293B" }}>{t("latest_reports")}</h2>
+              <h2 style={{ fontWeight: 600, color: "#1E293B" }}>{t("overall_reports", { defaultValue: "Overall" })}</h2>
               <Link to="/parent/progress" className="text-sm flex items-center gap-1 hover:underline" style={{ color: "#10B981", fontWeight: 500 }}>
                 {t("view_all")} <ArrowRight size={14} />
               </Link>
@@ -132,15 +142,15 @@ export function ParentDashboard() {
               {data.recentReports.map((report) => {
                 const gc = gradeConfig[report.grade] || { color: "#94A3B8", bg: "#F1F5F9", label: "Unknown", border: "#E2E8F0" };
                 return (
-                  <div key={report.subject} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div key={report.week} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: gc.bg }}>
                           <BookOpen size={18} style={{ color: gc.color }} />
                         </div>
                         <div>
-                          <p style={{ fontWeight: 600, color: "#1E293B" }}>{report.subject}</p>
-                          <p className="text-xs" style={{ color: "#94A3B8" }}>{t("week_term", { term: 2, week: 8 })}</p>
+                          <p style={{ fontWeight: 600, color: "#1E293B" }}>{report.week}</p>
+                          <p className="text-xs" style={{ color: "#94A3B8" }}>{gc.label}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -153,23 +163,27 @@ export function ParentDashboard() {
                       </div>
                     </div>
 
-                    <div className="mb-3 p-3 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-                      <p className="text-xs mb-0.5" style={{ fontWeight: 600, color: "#64748B" }}>{t("teacher_comment")}</p>
-                      <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{report.comment}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#10B981" }}>
-                        <Sparkles size={11} className="inline mr-1" />{t("ai_recommended")}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {report.aiRecommendations.map((rec, i) => (
-                          <span key={i} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}>
-                            ✓ {rec}
-                          </span>
-                        ))}
+                    {report.summary && (
+                      <div className="mb-3 p-3 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                        <p className="text-xs mb-0.5" style={{ fontWeight: 600, color: "#64748B" }}>{t("summary", { defaultValue: "Summary" })}</p>
+                        <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{report.summary}</p>
                       </div>
-                    </div>
+                    )}
+
+                    {report.recommendations.length > 0 && (
+                      <div>
+                        <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#10B981" }}>
+                          <Sparkles size={11} className="inline mr-1" />{t("ai_recommended")}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {report.recommendations.map((rec: string, i: number) => (
+                            <span key={i} className="text-xs px-2.5 py-1 rounded-full" style={{ backgroundColor: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}>
+                              ✓ {rec}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
