@@ -582,6 +582,35 @@ class TeacherService:
         return {"id": report.id, "status": report.status}
 
     @staticmethod
+    def revise_ai_report_content(
+        db: Session,
+        report_id: int,
+        summary: str | None,
+        recommendations: list[str] | None,
+        support_areas: list[str] | None,
+        curriculum_ref: str | None,
+        teacher_notes: str | None,
+    ) -> dict:
+        report = db.query(AIReport).filter(AIReport.id == report_id).first()
+        if not report:
+            raise AppException("Report not found", 404)
+        if summary is not None:
+            report.summary = summary
+        if recommendations is not None:
+            report.recommendations = recommendations
+        if support_areas is not None:
+            report.support_areas = support_areas
+        if curriculum_ref is not None:
+            report.curriculum_ref = curriculum_ref
+        if teacher_notes is not None:
+            report.teacher_notes = teacher_notes
+        report.status = "auto_approved"
+        report.teacher_approved = True
+        db.commit()
+        student = db.query(Student).filter(Student.id == report.student_id).first()
+        return TeacherService._format_ai_report(report, student)
+
+    @staticmethod
     def generate_student_ai_report(
         db: Session, teacher_id: int, student_id: int, term: str = "Term 2"
     ) -> dict:

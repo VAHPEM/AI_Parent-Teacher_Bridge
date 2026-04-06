@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import {
-  CheckCircle, Edit3, XCircle, Clock, Globe, BrainCircuit,
+  CheckCircle, Edit3, Clock, Globe, BrainCircuit,
   BookOpen, Home, ChevronDown, ChevronUp, Sparkles, AlertTriangle, Info, Zap
 } from "lucide-react";
 import { api } from "../../lib/api";
+import { RevisionModal } from "../../components/teacher/RevisionModal";
 
 type FilterType = "all" | "auto_approved" | "needs_review" | "needs_revision";
 
@@ -34,6 +35,7 @@ export function AIAnalysis() {
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [showTranslation, setShowTranslation] = useState<Set<number>>(new Set());
+  const [editingReport, setEditingReport] = useState<any | null>(null);
 
   useEffect(() => {
     api.get<any[]>("/teacher/ai-analysis").then((data) => setAnalyses(data));
@@ -65,6 +67,11 @@ export function AIAnalysis() {
     api.put(`/teacher/ai-analysis/${id}/revise`).then(() => {
       setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "needs_revision" } : a));
     });
+  };
+
+  const handleRevisionSave = (updated: any) => {
+    setAnalyses(prev => prev.map(a => a.id === updated.id ? updated : a));
+    setEditingReport(null);
   };
 
   const normStatus = (s: string | undefined) => (s || "").toLowerCase();
@@ -293,12 +300,12 @@ export function AIAnalysis() {
                   {isPending ? (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleRequestRevision(analysis.id)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm hover:bg-red-50 transition-colors"
-                        style={{ borderColor: "#FECACA", color: "#EF4444", fontWeight: 500 }}
+                        onClick={() => setEditingReport(analysis)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm hover:bg-blue-50 transition-colors"
+                        style={{ borderColor: "#BFDBFE", color: "#2563EB", fontWeight: 500 }}
                       >
-                        <XCircle size={14} />
-                        Request Revision
+                        <Edit3 size={14} />
+                        Edit &amp; Revise
                       </button>
                       <button
                         onClick={() => handleApprove(analysis.id)}
@@ -311,12 +318,12 @@ export function AIAnalysis() {
                     </div>
                   ) : isAutoApproved ? (
                     <button
-                      onClick={() => handleRequestRevision(analysis.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs hover:bg-red-50 transition-colors"
-                      style={{ borderColor: "#FECACA", color: "#EF4444" }}
+                      onClick={() => setEditingReport(analysis)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs hover:bg-blue-50 transition-colors"
+                      style={{ borderColor: "#BFDBFE", color: "#2563EB" }}
                     >
                       <Edit3 size={12} />
-                      Request Revision
+                      Edit &amp; Revise
                     </button>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -352,6 +359,13 @@ export function AIAnalysis() {
           </div>
         )}
       </div>
+      {editingReport && (
+        <RevisionModal
+          report={editingReport}
+          onClose={() => setEditingReport(null)}
+          onSave={handleRevisionSave}
+        />
+      )}
     </>
   );
 }

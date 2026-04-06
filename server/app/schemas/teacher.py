@@ -104,6 +104,14 @@ class FlaggedQuestionOut(BaseModel):
         from_attributes = True
 
 
+class AIReportRevisionPayload(BaseModel):
+    summary: Optional[str] = None
+    recommendations: Optional[list[str]] = None
+    support_areas: Optional[list[str]] = None
+    curriculum_ref: Optional[str] = None
+    teacher_notes: Optional[str] = None
+
+
 class RespondCreate(BaseModel):
     response: str
     method: str = "ai"

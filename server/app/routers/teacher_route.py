@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.dto.api_response import ApiResponse
 from app.services.teacher_service import TeacherService
-from app.schemas.teacher import GradeEntrySubmit, RespondCreate
+from app.schemas.teacher import GradeEntrySubmit, RespondCreate, AIReportRevisionPayload
 from app.models.teacher import Teacher
 
 router = APIRouter(prefix="/teacher", tags=["Teacher"])
@@ -116,6 +116,24 @@ def revise_analysis(
 ):
     data = TeacherService.update_ai_analysis_status(
         db, report_id, "needs_revision", teacher_notes=teacher_notes
+    )
+    return ApiResponse(body=data, message="success")
+
+
+@router.put("/ai-analysis/{report_id}/revise-content")
+def revise_content(
+    report_id: int,
+    payload: AIReportRevisionPayload,
+    db: Session = Depends(get_db),
+):
+    data = TeacherService.revise_ai_report_content(
+        db,
+        report_id,
+        summary=payload.summary,
+        recommendations=payload.recommendations,
+        support_areas=payload.support_areas,
+        curriculum_ref=payload.curriculum_ref,
+        teacher_notes=payload.teacher_notes,
     )
     return ApiResponse(body=data, message="success")
 
