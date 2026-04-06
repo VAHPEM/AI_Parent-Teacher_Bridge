@@ -13,6 +13,7 @@ from app.models.parent_question import ParentQuestion
 from app.models.parent import Parent
 from app.models.question_reply import QuestionReply
 from app.models.canvas_sync_log import CanvasSyncLog
+from app.models.activity import Activity
 from app.exceptions.app_exception import AppException
 from app.services.ai_report_service import (
     assert_teacher_for_student,
@@ -122,7 +123,7 @@ class TeacherService:
             .limit(5)
             .all()
         )
-        recent_analysis = [TeacherService._format_ai_report(r, s) for r, s in ai_rows]
+        recent_analysis = [TeacherService._format_ai_report(r, s, []) for r, s in ai_rows]
 
         # Flagged questions
         q_rows = (
@@ -525,7 +526,7 @@ class TeacherService:
 
     # ── AI Analysis ───────────────────────────────────────────────────
     @staticmethod
-    def _format_ai_report(report: AIReport, student: Student) -> dict:
+    def _format_ai_report(report: AIReport, student: Student, activities: list) -> dict:
         merged_recs = list(report.recommendations or [])
         summary = (report.summary or "").strip()
         return {
@@ -543,21 +544,78 @@ class TeacherService:
             "curriculumRef": report.curriculum_ref or "",
             "practicePreview": (merged_recs + [summary or "See summary above."])[0],
             "timestamp":     _time_ago(report.created_at),
+            "activities":    activities,
         }
 
     @staticmethod
-    def get_ai_analysis(db: Session, confidence: str | None = None) -> list:
+    def get_ai_analysis(db: Session, teacher_id: int, confidence: str | None = None) -> list:
         rows = (
             db.query(AIReport, Student)
             .join(Student, AIReport.student_id == Student.id)
+            .join(Class, Student.class_id == Class.id)
+            .filter(Class.teacher_id == teacher_id)
             .order_by(desc(AIReport.created_at))
             .all()
         )
-        out = [TeacherService._format_ai_report(r, s) for r, s in rows]
+        # Batch-fetch activities for all reports to avoid N+1
+        report_ids = [r.id for r, _ in rows]
+        all_activities = (
+            db.query(Activity)
+            .filter(Activity.ai_report_id.in_(report_ids))
+            .order_by(Activity.id)
+            .all()
+        ) if report_ids else []
+        acts_by_report: dict[int, list] = {}
+        for a in all_activities:
+            acts_by_report.setdefault(a.ai_report_id, []).append({
+                "id":           a.id,
+                "title":        a.title or "",
+                "type":         a.activity_type or "",
+                "duration":     a.duration or "",
+                "difficulty":   a.difficulty or "",
+                "description":  a.description or "",
+                "steps":        list(a.steps or []),
+                "curriculumRef": a.curriculum_ref or "",
+                "completed":    a.completed,
+            })
+        out = [
+            TeacherService._format_ai_report(r, s, acts_by_report.get(r.id, []))
+            for r, s in rows
+        ]
         if confidence:
             c = confidence.lower()
             out = [x for x in out if (x.get("confidence") or "").lower() == c]
         return out
+
+    @staticmethod
+    def update_activity(
+        db: Session,
+        activity_id: int,
+        title: str | None,
+        description: str | None,
+        steps: list[str] | None,
+    ) -> dict:
+        activity = db.query(Activity).filter(Activity.id == activity_id).first()
+        if not activity:
+            raise AppException("Activity not found", 404)
+        if title is not None:
+            activity.title = title
+        if description is not None:
+            activity.description = description
+        if steps is not None:
+            activity.steps = steps
+        db.commit()
+        return {
+            "id":          activity.id,
+            "title":       activity.title or "",
+            "type":        activity.activity_type or "",
+            "duration":    activity.duration or "",
+            "difficulty":  activity.difficulty or "",
+            "description": activity.description or "",
+            "steps":       list(activity.steps or []),
+            "curriculumRef": activity.curriculum_ref or "",
+            "completed":   activity.completed,
+        }
 
     @staticmethod
     def update_ai_analysis_status(
@@ -580,6 +638,42 @@ class TeacherService:
                 report.teacher_notes = teacher_notes.strip()
         db.commit()
         return {"id": report.id, "status": report.status}
+
+    @staticmethod
+    def revise_ai_report_content(
+        db: Session,
+        report_id: int,
+        summary: str | None,
+        recommendations: list[str] | None,
+        support_areas: list[str] | None,
+        curriculum_ref: str | None,
+        teacher_notes: str | None,
+    ) -> dict:
+        report = db.query(AIReport).filter(AIReport.id == report_id).first()
+        if not report:
+            raise AppException("Report not found", 404)
+        if summary is not None:
+            report.summary = summary
+        if recommendations is not None:
+            report.recommendations = recommendations
+        if support_areas is not None:
+            report.support_areas = support_areas
+        if curriculum_ref is not None:
+            report.curriculum_ref = curriculum_ref
+        if teacher_notes is not None:
+            report.teacher_notes = teacher_notes
+        report.status = "auto_approved"
+        report.teacher_approved = True
+        db.commit()
+        student = db.query(Student).filter(Student.id == report.student_id).first()
+        activities = db.query(Activity).filter(Activity.ai_report_id == report.id).order_by(Activity.id).all()
+        acts = [{
+            "id": a.id, "title": a.title or "", "type": a.activity_type or "",
+            "duration": a.duration or "", "difficulty": a.difficulty or "",
+            "description": a.description or "", "steps": list(a.steps or []),
+            "curriculumRef": a.curriculum_ref or "", "completed": a.completed,
+        } for a in activities]
+        return TeacherService._format_ai_report(report, student, acts)
 
     @staticmethod
     def generate_student_ai_report(
@@ -682,15 +776,29 @@ class TeacherService:
 
     # ── Reports (backed by ai_reports) ────────────────────────────────
     @staticmethod
-    def get_reports(db: Session, teacher_id: int) -> dict:
-        cls = db.query(Class).filter(Class.teacher_id == teacher_id).first()
-        student_ids = [
-            s.id for s in db.query(Student).filter(Student.class_id == cls.id).all()
-        ] if cls else []
+    def get_reports(db: Session, teacher_id: int, class_id: int | None = None) -> dict:
+        # Build the list of classes to include
+        if class_id is not None:
+            cls = db.query(Class).filter(Class.id == class_id, Class.teacher_id == teacher_id).first()
+            if not cls:
+                raise AppException("Class not found or not owned by this teacher", 404)
+            classes = [cls]
+        else:
+            classes = db.query(Class).filter(Class.teacher_id == teacher_id).all()
+
+        # Map class_id → class for fast lookup
+        class_map = {c.id: c for c in classes}
+        class_ids = list(class_map.keys())
+
+        # Get all students in the relevant classes
+        students = db.query(Student).filter(Student.class_id.in_(class_ids)).all() if class_ids else []
+        student_map = {s.id: s for s in students}
+        student_ids = [s.id for s in students]
+        student_class_map = {s.id: s.class_id for s in students}
 
         reports = (
             db.query(AIReport)
-            .filter(AIReport.student_id.in_(student_ids) if student_ids else True)
+            .filter(AIReport.student_id.in_(student_ids) if student_ids else False)
             .order_by(desc(AIReport.created_at))
             .all()
         )
@@ -704,8 +812,8 @@ class TeacherService:
             "reports": [
                 {
                     "id":           r.id,
-                    "title":        f"{r.term or 'Term 2'} Week {r.week_number or '?'} AI Report",
-                    "class_name":   cls.name if cls else "",
+                    "title":        f"{student_map.get(r.student_id, {}).name or 'Unknown Student'} - {r.term or 'Term 2'} Week {r.week_number or '?'} AI Report",
+                    "class_name":   getattr(class_map.get(student_class_map.get(r.student_id, -1)), "name", ""),
                     "term":         r.term or "Term 2",
                     "week_number":  r.week_number,
                     "status":       "sent" if r.sent_to_parent else ("ready" if r.teacher_approved else "draft"),

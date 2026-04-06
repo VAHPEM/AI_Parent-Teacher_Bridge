@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import {
-  CheckCircle, Edit3, XCircle, Clock, Globe, BrainCircuit,
+  CheckCircle, Edit3, Clock, Globe, BrainCircuit,
   BookOpen, Home, ChevronDown, ChevronUp, Sparkles, AlertTriangle, Info, Zap
 } from "lucide-react";
 import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
+import { RevisionModal } from "../../components/teacher/RevisionModal";
+import { ActivityEditForm } from "../../components/teacher/ActivityEditForm";
 
 type FilterType = "all" | "auto_approved" | "needs_review" | "needs_revision";
 
@@ -34,9 +37,11 @@ export function AIAnalysis() {
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [showTranslation, setShowTranslation] = useState<Set<number>>(new Set());
+  const [editingReport, setEditingReport] = useState<any | null>(null);
+  const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
 
   useEffect(() => {
-    api.get<any[]>("/teacher/ai-analysis").then((data) => setAnalyses(data));
+    api.get<any[]>(`/teacher/ai-analysis?teacher_id=${DEMO_TEACHER_ID}`).then((data) => setAnalyses(data));
   }, []);
 
   const toggleExpand = (id: number) => {
@@ -65,6 +70,20 @@ export function AIAnalysis() {
     api.put(`/teacher/ai-analysis/${id}/revise`).then(() => {
       setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "needs_revision" } : a));
     });
+  };
+
+  const handleRevisionSave = (updated: any) => {
+    setAnalyses(prev => prev.map(a => a.id === updated.id ? updated : a));
+    setEditingReport(null);
+  };
+
+  const handleActivitySave = (reportId: number, updatedActivity: any) => {
+    setAnalyses(prev => prev.map(a =>
+      a.id === reportId
+        ? { ...a, activities: a.activities.map((act: any) => act.id === updatedActivity.id ? updatedActivity : act) }
+        : a
+    ));
+    setEditingActivityId(null);
   };
 
   const normStatus = (s: string | undefined) => (s || "").toLowerCase();
@@ -152,7 +171,7 @@ export function AIAnalysis() {
         </div>
 
         {/* Cards grid */}
-        <div className="grid lg:grid-cols-2 gap-5">
+        <div className="grid gap-5">
           {filtered.map(analysis => {
             const st = normStatus(analysis.status);
             const status = statusConfig[analysis.status] ?? statusConfig[st] ?? statusConfig.pending;
@@ -248,12 +267,61 @@ export function AIAnalysis() {
                   </div>
 
                   {isExpanded && (
-                    <div className="mb-3 p-3 rounded-xl" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                    <div className="mb-3">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <Sparkles size={12} style={{ color: "#2563EB" }} />
-                        <span className="text-xs" style={{ fontWeight: 600, color: "#2563EB" }}>AI-GENERATED PRACTICE PREVIEW</span>
+                        <span className="text-xs" style={{ fontWeight: 600, color: "#2563EB", letterSpacing: "0.05em" }}>
+                          HOME LEARNING ACTIVITIES
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EFF6FF", color: "#2563EB" }}>
+                          {(analysis.activities || []).length}
+                        </span>
                       </div>
-                      <p className="text-xs" style={{ color: "#1E40AF" }}>{analysis.practicePreview}</p>
+                      {(analysis.activities || []).length === 0 ? (
+                        <p className="text-xs" style={{ color: "#94A3B8" }}>No activities generated for this report.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(analysis.activities || []).map((act: any) => (
+                            <div key={act.id} className="rounded-xl border p-3" style={{ backgroundColor: "#FAFAFA", borderColor: "#E2E8F0" }}>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <p className="text-xs" style={{ fontWeight: 600, color: "#1E293B" }}>{act.title}</p>
+                                    {act.type && (
+                                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EFF6FF", color: "#2563EB" }}>{act.type}</span>
+                                    )}
+                                    {act.duration && (
+                                      <span className="text-xs" style={{ color: "#94A3B8" }}>{act.duration}</span>
+                                    )}
+                                    {act.difficulty && (
+                                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#F8FAFC", color: "#64748B", border: "1px solid #E2E8F0" }}>{act.difficulty}</span>
+                                    )}
+                                  </div>
+                                  {act.description && (
+                                    <p className="text-xs" style={{ color: "#64748B", lineHeight: "1.5" }}>{act.description}</p>
+                                  )}
+                                </div>
+                                {editingActivityId !== act.id && (
+                                  <button
+                                    onClick={() => setEditingActivityId(act.id)}
+                                    className="flex items-center gap-1 px-2 py-1 rounded-lg border text-xs hover:bg-blue-50 transition-colors shrink-0"
+                                    style={{ borderColor: "#BFDBFE", color: "#2563EB" }}
+                                  >
+                                    <Edit3 size={11} /> Edit
+                                  </button>
+                                )}
+                              </div>
+                              {editingActivityId === act.id && (
+                                <ActivityEditForm
+                                  activity={act}
+                                  onSave={(updated) => handleActivitySave(analysis.id, updated)}
+                                  onCancel={() => setEditingActivityId(null)}
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -293,12 +361,12 @@ export function AIAnalysis() {
                   {isPending ? (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleRequestRevision(analysis.id)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm hover:bg-red-50 transition-colors"
-                        style={{ borderColor: "#FECACA", color: "#EF4444", fontWeight: 500 }}
+                        onClick={() => setEditingReport(analysis)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm hover:bg-blue-50 transition-colors"
+                        style={{ borderColor: "#BFDBFE", color: "#2563EB", fontWeight: 500 }}
                       >
-                        <XCircle size={14} />
-                        Request Revision
+                        <Edit3 size={14} />
+                        Edit &amp; Revise
                       </button>
                       <button
                         onClick={() => handleApprove(analysis.id)}
@@ -311,12 +379,12 @@ export function AIAnalysis() {
                     </div>
                   ) : isAutoApproved ? (
                     <button
-                      onClick={() => handleRequestRevision(analysis.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs hover:bg-red-50 transition-colors"
-                      style={{ borderColor: "#FECACA", color: "#EF4444" }}
+                      onClick={() => setEditingReport(analysis)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs hover:bg-blue-50 transition-colors"
+                      style={{ borderColor: "#BFDBFE", color: "#2563EB" }}
                     >
                       <Edit3 size={12} />
-                      Request Revision
+                      Edit &amp; Revise
                     </button>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -352,6 +420,13 @@ export function AIAnalysis() {
           </div>
         )}
       </div>
+      {editingReport && (
+        <RevisionModal
+          report={editingReport}
+          onClose={() => setEditingReport(null)}
+          onSave={handleRevisionSave}
+        />
+      )}
     </>
   );
 }

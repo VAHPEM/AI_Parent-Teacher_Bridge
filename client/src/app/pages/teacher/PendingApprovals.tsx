@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Sparkles, Info } from "lucide-react";
+import { CheckCircle, Edit3, Clock, AlertTriangle, Sparkles, Info } from "lucide-react";
 import { api } from "../../lib/api";
+import { RevisionModal } from "../../components/teacher/RevisionModal";
 
 export function PendingApprovals() {
   const [items, setItems] = useState<any[]>([]);
   const [approving, setApproving] = useState<number | null>(null);
+  const [editingReport, setEditingReport] = useState<any | null>(null);
 
   useEffect(() => {
     // Fetch specifically the low confidence ones or all and filter locally
@@ -25,6 +27,14 @@ export function PendingApprovals() {
     api.put(`/teacher/ai-analysis/${id}/revise`).then(() => {
       setItems(prev => prev.filter(a => a.id !== id));
     });
+  };
+
+  const handleRevisionSave = () => {
+    // After revising + approving, remove from pending list
+    if (editingReport) {
+      setItems(prev => prev.filter(a => a.id !== editingReport.id));
+    }
+    setEditingReport(null);
   };
 
   return (
@@ -95,12 +105,12 @@ export function PendingApprovals() {
                       Approve &amp; Send
                     </button>
                     <button
-                      onClick={() => handleRequestRevision(item.id)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm border hover:bg-red-50 transition-colors"
-                      style={{ borderColor: "#FECACA", color: "#EF4444", fontWeight: 500 }}
+                      onClick={() => setEditingReport(item)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm border hover:bg-blue-50 transition-colors"
+                      style={{ borderColor: "#BFDBFE", color: "#2563EB", fontWeight: 500 }}
                     >
-                      <XCircle size={14} />
-                      Request Revision
+                      <Edit3 size={14} />
+                      Edit &amp; Revise
                     </button>
                   </div>
                 </div>
@@ -126,6 +136,13 @@ export function PendingApprovals() {
           </div>
         )}
       </div>
+      {editingReport && (
+        <RevisionModal
+          report={editingReport}
+          onClose={() => setEditingReport(null)}
+          onSave={handleRevisionSave}
+        />
+      )}
     </>
   );
 }

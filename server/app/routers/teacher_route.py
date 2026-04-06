@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.dto.api_response import ApiResponse
 from app.services.teacher_service import TeacherService
-from app.schemas.teacher import GradeEntrySubmit, RespondCreate
+from app.schemas.teacher import GradeEntrySubmit, RespondCreate, AIReportRevisionPayload, ActivityUpdatePayload
 from app.models.teacher import Teacher
 
 router = APIRouter(prefix="/teacher", tags=["Teacher"])
@@ -91,8 +91,14 @@ def submit_grades(
 
 
 @router.get("/ai-analysis")
-def get_ai_analysis(confidence: str = Query(None), db: Session = Depends(get_db)):
-    data = TeacherService.get_ai_analysis(db, confidence)
+def get_ai_analysis(teacher_id: int = Query(...), confidence: str = Query(None), db: Session = Depends(get_db)):
+    data = TeacherService.get_ai_analysis(db, teacher_id, confidence)
+    return ApiResponse(body=data, message="success")
+
+
+@router.put("/activities/{activity_id}")
+def update_activity(activity_id: int, payload: ActivityUpdatePayload, db: Session = Depends(get_db)):
+    data = TeacherService.update_activity(db, activity_id, payload.title, payload.description, payload.steps)
     return ApiResponse(body=data, message="success")
 
 
@@ -116,6 +122,24 @@ def revise_analysis(
 ):
     data = TeacherService.update_ai_analysis_status(
         db, report_id, "needs_revision", teacher_notes=teacher_notes
+    )
+    return ApiResponse(body=data, message="success")
+
+
+@router.put("/ai-analysis/{report_id}/revise-content")
+def revise_content(
+    report_id: int,
+    payload: AIReportRevisionPayload,
+    db: Session = Depends(get_db),
+):
+    data = TeacherService.revise_ai_report_content(
+        db,
+        report_id,
+        summary=payload.summary,
+        recommendations=payload.recommendations,
+        support_areas=payload.support_areas,
+        curriculum_ref=payload.curriculum_ref,
+        teacher_notes=payload.teacher_notes,
     )
     return ApiResponse(body=data, message="success")
 
@@ -150,8 +174,8 @@ def schedule_call(question_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/reports")
-def get_reports(teacher_id: int = Query(...), db: Session = Depends(get_db)):
-    data = TeacherService.get_reports(db, teacher_id)
+def get_reports(teacher_id: int = Query(...), class_id: int = Query(None), db: Session = Depends(get_db)):
+    data = TeacherService.get_reports(db, teacher_id, class_id=class_id)
     return ApiResponse(body=data, message="success")
 
 
