@@ -76,47 +76,51 @@ const teacherResponses: { keywords: string[]; response: string; confidence: Conf
   }
 ];
 
-const parentResponses: { keywords: string[]; response: string; confidence: ConfidenceLevel }[] = [
-  {
-    keywords: ["grade", "marks", "score"],
-    response: "Noah received a C+ in Mathematics and C in English this week (Term 2, Week 8). His Mathematics has shown improvement — up from a C last week. Ms. Thompson has noted he's working hard and making good progress with multiplication.",
-    confidence: "high"
-  },
-  {
-    keywords: ["homework", "home", "practice", "help"],
-    response: "Based on Noah's current learning areas, Ms. Thompson recommends: ✓ 15 minutes of reading together each evening, ✓ Times tables practice (try the 'Times Tables Rockstars' app), ✓ Discuss story events after reading to build comprehension. These are personalised to Noah's needs this term.",
-    confidence: "high"
-  },
-  {
-    keywords: ["attend", "absence", "missing"],
-    response: "Noah's attendance this term is 92% (23 out of 25 days attended). He has had 2 absences recorded. Regular attendance is important — consistent school attendance is linked to better academic outcomes. If you have concerns, please contact the school office.",
-    confidence: "high"
-  },
-  {
-    keywords: ["bully", "friend", "social", "upset", "sad"],
-    response: "I want to make sure Noah gets the right support here. This is something Ms. Thompson should address directly with you. I've flagged your concern as urgent for her immediate attention. She will contact you within 24 hours. If this is an emergency, please call the school directly on (03) 9555 0100.",
-    confidence: "sensitive"
-  },
-  {
-    keywords: ["extension", "gifted", "advanced", "bored"],
-    response: "Extension program eligibility is assessed by Ms. Thompson based on sustained performance across all subjects. I don't have enough information to advise on this — I've flagged your question for Ms. Thompson's review. She'll be in touch with you soon.",
-    confidence: "low"
-  },
-  {
-    keywords: ["teacher", "contact", "call", "meeting"],
-    response: "You can contact Ms. Thompson via: 📧 Email: j.thompson@greenwoodps.edu.au | 📞 School: (03) 9555 0100 | 📅 Parent-teacher meetings: Book via the school app. Ms. Thompson's available consultation times are Tuesdays 3:30-4:30pm and Thursdays 3:30-4:30pm.",
-    confidence: "high"
-  }
-];
+function getParentResponses(studentName: string, teacherName: string): { keywords: string[]; response: string; confidence: ConfidenceLevel }[] {
+  return [
+    {
+      keywords: ["grade", "marks", "score"],
+      response: `${studentName} received a C+ in Mathematics and C in English this week (Term 2, Week 8). His Mathematics has shown improvement — up from a C last week. ${teacherName} has noted he's working hard and making good progress with multiplication.`,
+      confidence: "high"
+    },
+    {
+      keywords: ["homework", "home", "practice", "help"],
+      response: `Based on ${studentName}'s current learning areas, ${teacherName} recommends: ✓ 15 minutes of reading together each evening, ✓ Times tables practice (try the 'Times Tables Rockstars' app), ✓ Discuss story events after reading to build comprehension. These are personalised to ${studentName}'s needs this term.`,
+      confidence: "high"
+    },
+    {
+      keywords: ["attend", "absence", "missing"],
+      response: `${studentName}'s attendance this term is 92% (23 out of 25 days attended). He has had 2 absences recorded. Regular attendance is important — consistent school attendance is linked to better academic outcomes. If you have concerns, please contact the school office.`,
+      confidence: "high"
+    },
+    {
+      keywords: ["bully", "friend", "social", "upset", "sad"],
+      response: `I want to make sure ${studentName} gets the right support here. This is something ${teacherName} should address directly with you. I've flagged your concern as urgent for her immediate attention. She will contact you within 24 hours. If this is an emergency, please call the school directly on (03) 9555 0100.`,
+      confidence: "sensitive"
+    },
+    {
+      keywords: ["extension", "gifted", "advanced", "bored"],
+      response: `Extension program eligibility is assessed by ${teacherName} based on sustained performance across all subjects. I don't have enough information to advise on this — I've flagged your question for ${teacherName}'s review. She'll be in touch with you soon.`,
+      confidence: "low"
+    },
+    {
+      keywords: ["teacher", "contact", "call", "meeting"],
+      response: `You can contact ${teacherName} via: 📞 School: (03) 9555 0100 | 📅 Parent-teacher meetings: Book via the school app. ${teacherName}'s available consultation times are Tuesdays 3:30-4:30pm and Thursdays 3:30-4:30pm.`,
+      confidence: "high"
+    }
+  ];
+}
 
-const defaultResponse = {
-  teacher: "I can help you with student grades, pending approvals, parent questions, and class performance data. Try asking about specific students, class averages, or flagged questions!",
-  parent: "I can help you understand Noah's grades, homework recommendations, attendance, and how to contact Ms. Thompson. What would you like to know?"
-};
+function getDefaultResponse(studentName: string, teacherName: string) {
+  return {
+    teacher: "I can help you with student grades, pending approvals, parent questions, and class performance data. Try asking about specific students, class averages, or flagged questions!",
+    parent: `I can help you understand ${studentName}'s grades, homework recommendations, attendance, and how to contact ${teacherName}. What would you like to know?`
+  };
+}
 
-function getResponse(input: string, portal: Portal): { response: string; confidence: ConfidenceLevel } {
+function getResponse(input: string, portal: Portal, studentName: string, teacherName: string): { response: string; confidence: ConfidenceLevel } {
   const lower = input.toLowerCase();
-  const responses = portal === "teacher" ? teacherResponses : parentResponses;
+  const responses = portal === "teacher" ? teacherResponses : getParentResponses(studentName, teacherName);
 
   for (const item of responses) {
     if (item.keywords.some(kw => lower.includes(kw))) {
@@ -124,23 +128,25 @@ function getResponse(input: string, portal: Portal): { response: string; confide
     }
   }
 
-  return { response: defaultResponse[portal], confidence: "medium" };
+  return { response: getDefaultResponse(studentName, teacherName)[portal], confidence: "medium" };
 }
 
 interface AIChatbotProps {
   open: boolean;
   onToggle: () => void;
   portal: Portal;
+  teacherName?: string;
+  studentName?: string;
 }
 
-export function AIChatbot({ open, onToggle, portal }: AIChatbotProps) {
+export function AIChatbot({ open, onToggle, portal, teacherName = "Teacher", studentName = "your child" }: AIChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       role: "assistant",
       content: portal === "teacher"
-        ? "Hello Ms. Thompson! I'm your EduTrack AI assistant. I can help you review student performance, manage pending approvals, and respond to parent questions. What would you like to know?"
-        : "Hello! I'm the EduTrack AI assistant for Greenwood Primary. I can help you understand Noah's progress, homework recommendations, and how to connect with Ms. Thompson. How can I help?",
+        ? `Hello ${teacherName}! I'm your EduTrack AI assistant. I can help you review student performance, manage pending approvals, and respond to parent questions. What would you like to know?`
+        : `Hello! I'm the EduTrack AI assistant for Greenwood Primary. I can help you understand ${studentName}'s progress, homework recommendations, and how to connect with ${teacherName}. How can I help?`,
       confidence: "high",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
@@ -168,7 +174,7 @@ export function AIChatbot({ open, onToggle, portal }: AIChatbotProps) {
     setIsTyping(true);
 
     setTimeout(() => {
-      const { response, confidence } = getResponse(input, portal);
+      const { response, confidence } = getResponse(input, portal, studentName, teacherName);
       const aiMessage: Message = {
         id: messages.length + 2,
         role: "assistant",
@@ -183,7 +189,7 @@ export function AIChatbot({ open, onToggle, portal }: AIChatbotProps) {
 
   const suggestedQuestions = portal === "teacher"
     ? ["What's pending review?", "Show flagged parent questions", "How is the class performing?"]
-    : ["What grade did Noah get?", "What homework should we do?", "How do I contact Ms. Thompson?"];
+    : [`What grade did ${studentName} get?`, "What homework should we do?", `How do I contact ${teacherName}?`];
 
   return (
     <>

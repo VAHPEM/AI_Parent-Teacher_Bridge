@@ -230,7 +230,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
       </div>
 
       {location.pathname !== "/parent/ai-chat" && (
-        <AIChatbot open={chatOpen} onToggle={() => setChatOpen(!chatOpen)} portal="parent" />
+        <AIChatbot open={chatOpen} onToggle={() => setChatOpen(!chatOpen)} portal="parent" teacherName={activeChild?.teacher} studentName={activeChild?.firstName} />
       )}
     </div>
   );

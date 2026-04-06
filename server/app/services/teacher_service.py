@@ -26,6 +26,8 @@ from datetime import datetime
 # Palette used to derive avatar colour from student/parent id
 COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#EC4899", "#14B8A6", "#F97316"]
 
+SCHOOL_NAME = "Greenwood Primary School"
+
 
 def _color(id: int) -> str:
     return COLORS[id % len(COLORS)]
@@ -134,7 +136,10 @@ class TeacherService:
         )
         flagged_questions = [TeacherService._format_question_flat(q, p, s, db) for q, p, s in q_rows]
 
+        teacher_name = teacher.name if teacher else "Teacher"
         return {
+            "teacherName": teacher_name,
+            "school":      SCHOOL_NAME,
             "stats": {
                 "totalStudents":  total_students,
                 "pendingReviews": pending_reviews,
@@ -148,8 +153,11 @@ class TeacherService:
 
     # ── Classes ───────────────────────────────────────────────────────
     @staticmethod
-    def get_classes(db: Session) -> list:
-        classes = db.query(Class).order_by(Class.id).all()
+    def get_classes(db: Session, teacher_id: int | None = None) -> list:
+        query = db.query(Class)
+        if teacher_id is not None:
+            query = query.filter(Class.teacher_id == teacher_id)
+        classes = query.order_by(Class.id).all()
         result = []
         for cls in classes:
             teacher = db.query(Teacher).filter(Teacher.id == cls.teacher_id).first()
@@ -601,12 +609,19 @@ class TeacherService:
             .order_by(QuestionReply.created_at)
             .all()
         )
+        # Look up teacher for this student's class
+        cls = db.query(Class).filter(Class.id == student.class_id).first()
+        teacher = db.query(Teacher).filter(Teacher.id == cls.teacher_id).first() if cls else None
+        teacher_name = teacher.name if teacher else "Teacher"
+        teacher_initials = _initials(teacher_name) if teacher else "T"
         return {
             "id":                   q.id,
             "avatar":               _initials(parent.name),
             "avatarColor":          _color(parent.id),
             "parentName":           parent.name,
             "parentInitials":       _initials(parent.name),
+            "teacherName":          teacher_name,
+            "teacherInitials":      teacher_initials,
             "childName":            student.name.split()[0],
             "studentName":          student.name,
             "priority":             q.priority,
@@ -757,7 +772,7 @@ class TeacherService:
         records  = db.query(WeeklyRecord).count()
         return {
             "connected":   True,
-            "school":      "Greenwood Primary School",
+            "school":      SCHOOL_NAME,
             "lastSyncAt":  str(latest.synced_at) if latest else None,
             "recordCount": latest.records_count if latest else 0,
             "stats": {

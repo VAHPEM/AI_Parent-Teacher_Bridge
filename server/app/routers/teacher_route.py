@@ -4,8 +4,19 @@ from app.db.database import get_db
 from app.dto.api_response import ApiResponse
 from app.services.teacher_service import TeacherService
 from app.schemas.teacher import GradeEntrySubmit, RespondCreate
+from app.models.teacher import Teacher
 
 router = APIRouter(prefix="/teacher", tags=["Teacher"])
+
+
+@router.get("/me")
+def get_me(teacher_id: int = Query(...), db: Session = Depends(get_db)):
+    teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if not teacher:
+        return ApiResponse(body={"name": "Teacher", "initials": "T", "email": ""}, message="success")
+    parts = teacher.name.strip().split()
+    initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else parts[0][:2].upper()
+    return ApiResponse(body={"name": teacher.name, "initials": initials, "email": teacher.email or ""}, message="success")
 
 
 @router.get("/dashboard")
@@ -15,8 +26,8 @@ def get_dashboard(teacher_id: int = Query(...), db: Session = Depends(get_db)):
 
 
 @router.get("/classes")
-def get_classes(db: Session = Depends(get_db)):
-    data = TeacherService.get_classes(db)
+def get_classes(teacher_id: int = Query(None), db: Session = Depends(get_db)):
+    data = TeacherService.get_classes(db, teacher_id=teacher_id)
     return ApiResponse(body=data, message="success")
 
 

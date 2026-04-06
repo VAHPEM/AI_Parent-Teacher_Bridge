@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Globe, Shield, Bot, Mail, Save, User } from "lucide-react";
+import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 export function TeacherSettings() {
   const [saved, setSaved] = useState(false);
+  const [teacher, setTeacher] = useState({ name: "Teacher", initials: "T", email: "" });
+
+  useEffect(() => {
+    api.get<{ name: string; initials: string; email: string }>(`/teacher/me?teacher_id=${DEMO_TEACHER_ID}`)
+      .then(data => setTeacher(data));
+  }, []);
   const [notifications, setNotifications] = useState({
     newQuestion: true, approvalReminder: true, weeklyDigest: true, urgentAlerts: true
   });
@@ -47,18 +55,18 @@ export function TeacherSettings() {
             </div>
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: "#2563EB", fontSize: "1.1rem", fontWeight: 700 }}>
-                MT
+                {teacher.initials}
               </div>
               <div>
-                <p style={{ fontWeight: 600, color: "#1E293B" }}>Ms. Jennifer Thompson</p>
+                <p style={{ fontWeight: 600, color: "#1E293B" }}>{teacher.name}</p>
                 <p className="text-sm" style={{ color: "#64748B" }}>Year 5 Teacher · Greenwood Primary School</p>
-                <p className="text-xs" style={{ color: "#94A3B8" }}>j.thompson@greenwoodps.edu.au</p>
+                <p className="text-xs" style={{ color: "#94A3B8" }}>{teacher.email}</p>
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               {[
-                { label: "Full Name", value: "Jennifer Thompson" },
-                { label: "Email", value: "j.thompson@greenwoodps.edu.au" },
+                { label: "Full Name", value: teacher.name },
+                { label: "Email", value: teacher.email },
               ].map(f => (
                 <div key={f.label}>
                   <label className="text-xs block mb-1" style={{ color: "#64748B", fontWeight: 500 }}>{f.label}</label>

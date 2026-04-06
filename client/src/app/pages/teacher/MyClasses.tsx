@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Users, TrendingUp, TrendingDown, Minus, ChevronRight, BookOpen, Award } from "lucide-react";
 import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 
 const gradeColors: Record<string, { bg: string; color: string }> = {
   "A": { bg: "#D1FAE5", color: "#065F46" },
@@ -17,7 +18,7 @@ export function MyClasses() {
   const [studentList, setStudentList] = useState<any[]>([]);
 
   useEffect(() => {
-    api.get<any[]>("/teacher/classes").then((data) => {
+    api.get<any[]>(`/teacher/classes?teacher_id=${DEMO_TEACHER_ID}`).then((data) => {
       // enrich with UI specific fields if missing
       const enriched = data.map((c, i) => ({
         ...c,

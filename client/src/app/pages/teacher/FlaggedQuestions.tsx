@@ -281,12 +281,12 @@ export function FlaggedQuestions() {
                           className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-0.5"
                           style={{ backgroundColor: r.from_role === "teacher" ? "#2563EB" : q.avatarColor, fontWeight: 700, fontSize: "10px" }}
                         >
-                          {r.from_role === "teacher" ? "MT" : q.parentInitials}
+                          {r.from_role === "teacher" ? q.teacherInitials : q.parentInitials}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-semibold" style={{ color: "#1E293B" }}>
-                              {r.from_role === "teacher" ? "Ms. Thompson" : q.parentName}
+                              {r.from_role === "teacher" ? q.teacherName : q.parentName}
                             </span>
                             <span className="text-xs" style={{ color: "#94A3B8" }}>
                               {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
