@@ -13,8 +13,6 @@ class AIReport(Base):
     summary          = Column(Text)
     strengths        = Column(JSONB)
     support_areas    = Column(JSONB)
-    improvement_areas = Column(JSONB)
-    parent_actions   = Column(JSONB)
     recommendations  = Column(JSONB)
     risk_level       = Column(String(20))
     curriculum_ref   = Column(String(255))

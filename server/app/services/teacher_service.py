@@ -322,9 +322,7 @@ class TeacherService:
     # ── AI Analysis ───────────────────────────────────────────────────
     @staticmethod
     def _format_ai_report(report: AIReport, student: Student) -> dict:
-        recs = list(report.recommendations or [])
-        parent_acts = list(report.parent_actions or [])
-        merged_recs = recs if recs else parent_acts
+        merged_recs = list(report.recommendations or [])
         summary = (report.summary or "").strip()
         return {
             "id":            report.id,

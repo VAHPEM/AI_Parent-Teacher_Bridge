@@ -41,6 +41,8 @@ def apply_schema_patches(eng) -> None:
         conn.execute(
             text("ALTER TABLE ai_reports ADD COLUMN IF NOT EXISTS teacher_notes TEXT")
         )
+        conn.execute(text("ALTER TABLE ai_reports DROP COLUMN IF EXISTS improvement_areas"))
+        conn.execute(text("ALTER TABLE ai_reports DROP COLUMN IF EXISTS parent_actions"))
 
 
 def get_db():
