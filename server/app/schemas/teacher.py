@@ -38,15 +38,26 @@ class GradeEntryOut(BaseModel):
     concerns: list[str]
 
 
+class AssessmentOut(BaseModel):
+    id: int
+    assessment_name: str
+    assessment_type: Optional[str]
+    max_score: Optional[float]
+    week_number: Optional[int]
+    term: Optional[str]
+
+
 class GradeEntryItem(BaseModel):
     student_id: int
-    grade: Optional[str] = None
     score: Optional[float] = None
     comment: Optional[str] = None
+    participation: Optional[str] = None
+    concerns: Optional[list[str]] = []
 
 
 class GradeEntrySubmit(BaseModel):
     class_id: int
+    assessment_id: int
     week: int
     term: str = "Term 2"
     subject: str

@@ -26,23 +26,36 @@ def get_class_students(class_id: int, db: Session = Depends(get_db)):
     return ApiResponse(body=data, message="success")
 
 
-@router.get("/grade-entry")
-def get_grade_entry(
+@router.get("/assessments")
+def get_assessments(
     class_id: int = Query(...),
     week: int = Query(...),
     subject: str = Query(...),
     term: str = Query("Term 2"),
     db: Session = Depends(get_db),
 ):
-    data = TeacherService.get_grade_entry(db, class_id, week, subject, term)
+    data = TeacherService.get_assessments(db, class_id, week, subject, term)
+    return ApiResponse(body=data, message="success")
+
+
+@router.get("/grade-entry")
+def get_grade_entry(
+    class_id: int = Query(...),
+    assessment_id: int = Query(...),
+    week: int = Query(...),
+    subject: str = Query(...),
+    term: str = Query("Term 2"),
+    db: Session = Depends(get_db),
+):
+    data = TeacherService.get_grade_entry(db, class_id, assessment_id, week, subject, term)
     return ApiResponse(body=data, message="success")
 
 
 @router.post("/grade-entry/draft")
 def save_draft(payload: GradeEntrySubmit, db: Session = Depends(get_db)):
     data = TeacherService.save_grade_entry(
-        db, payload.class_id, payload.week, payload.term, payload.subject,
-        [e.model_dump() for e in payload.entries], "draft"
+        db, payload.class_id, payload.assessment_id, payload.week, payload.term,
+        payload.subject, [e.model_dump() for e in payload.entries], "draft"
     )
     return ApiResponse(body=data, message="success")
 
@@ -55,13 +68,14 @@ def submit_grades(
 ):
     entries = [e.model_dump() for e in payload.entries]
     data = TeacherService.save_grade_entry(
-        db, payload.class_id, payload.week, payload.term, payload.subject,
-        entries, "submitted"
+        db, payload.class_id, payload.assessment_id, payload.week, payload.term,
+        payload.subject, entries, "submitted"
     )
     student_ids = list({int(e["student_id"]) for e in entries})
-    ai_reports = TeacherService.generate_ai_reports_after_grade_submit(
-        db, teacher_id, payload.class_id, payload.term, student_ids
-    )
+    # ai_reports = TeacherService.generate_ai_reports_after_grade_submit(
+    #     db, teacher_id, payload.class_id, payload.term, student_ids
+    # )
+    ai_reports = []
     return ApiResponse(body={**data, "ai_reports": ai_reports}, message="success")
 
 
