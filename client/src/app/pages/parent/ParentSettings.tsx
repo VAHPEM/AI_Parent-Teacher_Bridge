@@ -27,7 +27,7 @@ export function ParentSettings() {
   const { language, setLanguage } = useLanguage();
 
   const firstName = activeChild?.firstName ?? "your child";
-  const teacher = activeChild?.teacher ?? "Ms. Thompson";
+  const teacher = activeChild?.teacher ?? "Teacher";
 
   useEffect(() => {
     api.get<SettingsData>(`/parent/settings?parent_id=${DEMO_PARENT_ID}`)

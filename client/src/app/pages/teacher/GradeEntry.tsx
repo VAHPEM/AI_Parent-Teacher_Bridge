@@ -4,7 +4,6 @@ import { api } from "../../lib/api";
 import { DEMO_TEACHER_ID } from "../../lib/config";
 
 const subjects = ["English", "Mathematics", "Science", "HASS", "Health & PE"];
-const classes = ["Year 5A", "Year 5B", "Year 6A", "Year 6B"];
 const weeks = ["Week 6", "Week 7", "Week 8"];
 const participations = ["Excellent", "Good", "Satisfactory", "Needs Improvement"];
 const concernTags = [
@@ -60,15 +59,24 @@ export function GradeEntry() {
   const [savedDraft, setSavedDraft] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const [classesList, setClassesList] = useState<{ id: number; name: string }[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
   const [entries, setEntries] = useState<StudentEntry[]>([]);
   const [search, setSearch] = useState("");
 
-  const classId = 1;
+  useEffect(() => {
+    api.get<{ id: number; name: string }[]>(`/teacher/classes?teacher_id=${DEMO_TEACHER_ID}`).then(data => {
+      setClassesList(data);
+      if (data.length > 0) setSelectedClass(data[0].name);
+    });
+  }, []);
+
+  const classId = classesList.find(c => c.name === selectedClass)?.id ?? null;
 
   // Fetch assessments when class/week/subject changes
   useEffect(() => {
+    if (classId === null) return;
     const weekNum = parseInt(selectedWeek.replace(/\D/g, "")) || 8;
     api.get<Assessment[]>(
       `/teacher/assessments?class_id=${classId}&week=${weekNum}&subject=${encodeURIComponent(activeSubject)}&term=Term%202`
@@ -77,11 +85,11 @@ export function GradeEntry() {
       setSelectedAssessmentId(data.length > 0 ? data[0].id : null);
     });
     setEntries([]);
-  }, [selectedClass, selectedWeek, activeSubject]);
+  }, [classId, selectedWeek, activeSubject]);
 
-  // Fetch student entries when assessment selection changes
+  // Fetch student entries when assessment or class changes
   useEffect(() => {
-    if (selectedAssessmentId === null) {
+    if (selectedAssessmentId === null || classId === null) {
       setEntries([]);
       return;
     }
@@ -97,7 +105,7 @@ export function GradeEntry() {
         concerns:      d.concerns || [],
       })));
     });
-  }, [selectedAssessmentId, selectedWeek, activeSubject]);
+  }, [selectedAssessmentId, classId, selectedWeek, activeSubject]);
 
   const updateEntry = (id: number, field: keyof StudentEntry, value: string | number | string[]) => {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
@@ -162,7 +170,7 @@ export function GradeEntry() {
                 className="text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
                 style={{ color: "#1E293B", backgroundColor: "white" }}
               >
-                {classes.map(c => <option key={c}>{c}</option>)}
+                {classesList.map(c => <option key={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">

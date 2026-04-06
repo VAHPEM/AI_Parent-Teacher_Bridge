@@ -84,8 +84,8 @@ export function TeacherDashboard() {
         <div className="mb-7">
           <div className="flex items-center justify-between">
             <div>
-              <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1E293B" }}>Good morning, Ms. Thompson 👋</h1>
-              <p className="mt-1" style={{ color: "#64748B" }}>Term 2, Week 8 · Thursday, April 3, 2026 · Greenwood Primary School</p>
+              <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1E293B" }}>Good morning, {data.teacherName} 👋</h1>
+              <p className="mt-1" style={{ color: "#64748B" }}>Term 2, Week 8 · Thursday, April 3, 2026 · {data.school}</p>
             </div>
             <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-200" style={{ backgroundColor: "#EFF6FF" }}>
               <Clock size={14} style={{ color: "#2563EB" }} />

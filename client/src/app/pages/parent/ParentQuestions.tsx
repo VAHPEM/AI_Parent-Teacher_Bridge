@@ -24,6 +24,11 @@ type Thread = {
   messages: Array<{ id: number | string; from: string; content: string; timestamp: string }>;
 };
 
+function teacherInitials(name: string): string {
+  const parts = name.trim().split(" ");
+  return parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : parts[0].slice(0, 2).toUpperCase();
+}
+
 export function ParentQuestions() {
   const { activeChild: student, parent } = useParentChild();
   const { t } = useTranslation("questions");
@@ -37,6 +42,8 @@ export function ParentQuestions() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const teacherName = student?.teacher ?? "Teacher";
+
   useEffect(() => {
     if (!student) return;
     setLoading(true);
@@ -44,8 +51,8 @@ export function ParentQuestions() {
       const mapped = data.map((q) => ({
         id: q.id,
         subject: q.subject ?? "General",
-        teacher: "Ms. Jennifer Thompson",
-        teacherInitials: "MT",
+        teacher: teacherName,
+        teacherInitials: teacherInitials(teacherName),
         teacherColor: "#2563EB",
         status: q.status === "answered" ? "answered" : "pending",
         priority: q.priority,
@@ -64,7 +71,7 @@ export function ParentQuestions() {
       if (mapped.length > 0) setExpandedId(mapped[0].id);
       setLoading(false);
     });
-  }, [student?.id, language]);
+  }, [student?.id, language, teacherName]);
 
   const handleFollowUp = (threadId: number) => {
     const text = followUps[threadId];
@@ -87,8 +94,8 @@ export function ParentQuestions() {
         const newThread: Thread = {
           id: res.question_id,
           subject: newQuestion.subject,
-          teacher: "Ms. Jennifer Thompson",
-          teacherInitials: "MT",
+          teacher: student?.teacher ?? "Teacher",
+          teacherInitials: teacherInitials(student?.teacher ?? "Teacher"),
           teacherColor: "#2563EB",
           status: "pending",
           priority: newQuestion.priority,
