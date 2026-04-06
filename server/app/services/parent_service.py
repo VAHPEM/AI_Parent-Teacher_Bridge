@@ -577,6 +577,17 @@ class ParentService:
 
     # ── AI Chat Sessions ──────────────────────────────────────────────
     @staticmethod
+    def assert_chat_session(
+        db: Session, session_id: int, student_id: int, parent_id: int
+    ) -> ChatSession:
+        session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if not session:
+            raise AppException("Chat session not found", 404)
+        if session.student_id != student_id or session.parent_id != parent_id:
+            raise AppException("Not allowed to use this chat session", 403)
+        return session
+
+    @staticmethod
     def get_chat_sessions(db: Session, student_id: int, parent_id: int) -> list:
         sessions = (
             db.query(ChatSession)
@@ -598,7 +609,10 @@ class ParentService:
         return {"id": session.id, "title": session.title or "New Chat", "language": session.language, "created_at": str(session.created_at)}
 
     @staticmethod
-    def get_session_messages(db: Session, session_id: int) -> list:
+    def get_session_messages(
+        db: Session, session_id: int, student_id: int, parent_id: int
+    ) -> list:
+        ParentService.assert_chat_session(db, session_id, student_id, parent_id)
         msgs = (
             db.query(ChatMessage)
             .filter(ChatMessage.session_id == session_id)

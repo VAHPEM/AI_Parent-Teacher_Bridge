@@ -1,10 +1,16 @@
+from __future__ import annotations
+
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.models.activity import Activity
 from app.models.ai_report import AIReport
 from app.models.parent import Parent
 from app.models.student import Student
+from app.models.subject import Subject
 from app.models.weekly_record import WeeklyRecord
 from app.exceptions.app_exception import AppException
 from app.services.curricullm_service import generate_parent_report_json
@@ -195,13 +201,21 @@ def validate_and_normalize_report(report: dict[str, Any], student_payload: dict[
     )
     cref = str(cref).strip()
 
+    parent_actions = _ensure_list_of_strings(report.get("parent_actions", []))
+    if not parent_actions:
+        parent_actions = _ensure_list_of_strings(report.get("recommendations", []))
+
+    parent_summary = str(
+        report.get("parent_summary") or report.get("summary") or ""
+    ).strip()
+
     normalized = {
         "student_id": report.get("student_id", db_student_id),
         "week_number": int(report.get("week_number", latest_week) or latest_week),
         "strengths": _ensure_list_of_strings(report.get("strengths", [])),
         "support_areas": _ensure_list_of_strings(report.get("support_areas", [])),
-        "parent_summary": str(report.get("parent_summary", "")).strip(),
-        "parent_actions": _ensure_list_of_strings(report.get("parent_actions", [])),
+        "parent_summary": parent_summary,
+        "parent_actions": parent_actions,
         "curriculum_ref": cref,
         "risk_level": calculated_risk,
     }
@@ -212,21 +226,80 @@ def validate_and_normalize_report(report: dict[str, Any], student_payload: dict[
     return normalized
 
 
-def create_ai_report_for_student(db: Session, student_id: int, term: str = "Term 2") -> AIReport:
-    payload = fetch_student_payload(db, student_id)
-    if not payload:
-        raise AppException("Student not found", 404)
-    if not payload["weekly_records"]:
-        raise AppException("No weekly records for this student; add grades before generating a report.", 400)
+def _resolve_subject_id(db: Session, subject_hint: Any) -> int | None:
+    if subject_hint is None:
+        return None
+    s = str(subject_hint).strip()
+    if not s:
+        return None
+    if s.isdigit():
+        row = db.query(Subject).filter(Subject.id == int(s)).first()
+        return row.id if row else None
+    row = db.query(Subject).filter(Subject.subject_name.ilike(s)).first()
+    if row:
+        return row.id
+    row = db.query(Subject).filter(Subject.subject_name.ilike(f"%{s}%")).first()
+    return row.id if row else None
 
+
+def _persist_activities_for_report(
+    db: Session,
+    report: AIReport,
+    items: list[Any],
+    report_curriculum_ref: str | None,
+) -> None:
+    """Replace prior AI-linked activities for this student; attach new rows to ``report``."""
+    db.query(Activity).filter(
+        Activity.student_id == report.student_id,
+        Activity.ai_report_id.isnot(None),
+    ).delete(synchronize_session=False)
+
+    if not items:
+        return
+
+    sid = report.student_id
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        subj_id = _resolve_subject_id(db, it.get("subject_id"))
+        steps = _ensure_list_of_strings(it.get("steps"))
+        desc = str(it.get("description") or "").strip()
+        ref = str(it.get("reference") or "").strip()
+        cref = ref or (report_curriculum_ref or "") or ""
+        cref = cref.strip()[:255] if cref else None
+        title = str(it.get("title") or "").strip() or "Learning activity"
+        db.add(
+            Activity(
+                student_id=sid,
+                ai_report_id=report.id,
+                subject_id=subj_id,
+                title=title[:255],
+                activity_type=str(it.get("type") or "home_learning").strip()[:100],
+                duration=str(it.get("duration") or "").strip()[:50] or None,
+                difficulty=str(it.get("difficulty") or "medium").strip()[:50],
+                description=desc or None,
+                steps=steps or None,
+                curriculum_ref=cref,
+            )
+        )
+
+
+def persist_ai_report_bundle(
+    db: Session,
+    student_id: int,
+    term: str,
+    bundle: dict[str, Any],
+    payload: dict[str, Any],
+) -> AIReport:
+    """Write CurricuLLM output to ``ai_reports`` + ``activities``. Caller supplies an open session."""
     delete_stub_reports_for_student(db, student_id)
 
-    try:
-        raw = generate_parent_report_json(payload)
-    except ValueError as e:
-        raise AppException(str(e), 503)
+    inner_report = bundle.get("report") or {}
+    activity_items = bundle.get("activities") or []
+    if not isinstance(activity_items, list):
+        activity_items = []
 
-    normalized = validate_and_normalize_report(raw, payload)
+    normalized = validate_and_normalize_report(inner_report, payload)
     risk = normalized["risk_level"]
 
     if risk == "high":
@@ -254,9 +327,114 @@ def create_ai_report_for_student(db: Session, student_id: int, term: str = "Term
         sent_to_parent=False,
     )
     db.add(row)
+    db.flush()
+    _persist_activities_for_report(
+        db,
+        row,
+        activity_items,
+        normalized.get("curriculum_ref"),
+    )
     db.commit()
     db.refresh(row)
     return row
+
+
+def run_curricullm_for_student(
+    student_id: int,
+) -> tuple[int, dict[str, Any] | None, dict[str, Any] | None, str | None, int | None]:
+    """
+    Load payload (short DB use), then call CurricuLLM without holding a DB connection.
+
+    Returns ``(student_id, payload, bundle, error_message, http_status_or_none)``.
+    ``http_status`` is set when the error should trigger fail-fast (e.g. 503).
+    """
+    from app.db.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        payload = fetch_student_payload(db, student_id)
+        if not payload:
+            return student_id, None, None, "Student not found", 404
+        if not payload["weekly_records"]:
+            return (
+                student_id,
+                None,
+                None,
+                "No weekly records for this student; add grades before generating a report.",
+                400,
+            )
+    finally:
+        db.close()
+
+    try:
+        bundle = generate_parent_report_json(payload)
+    except ValueError as e:
+        return student_id, None, None, str(e), 503
+    return student_id, payload, bundle, None, None
+
+
+def generate_ai_reports_for_students_parallel(
+    student_ids: list[int],
+    term: str,
+    *,
+    max_workers: int | None = None,
+    reraise_server_error: bool = False,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Run CurricuLLM concurrently (I/O bound), then persist each result on its own session.
+
+    ``AI_REPORT_MAX_WORKERS`` env caps concurrency (default 5).
+    """
+    from app.db.database import SessionLocal
+
+    ids = list(dict.fromkeys(student_ids))
+    if not ids:
+        return [], []
+
+    default_w = int(os.getenv("AI_REPORT_MAX_WORKERS", "5"))
+    w = default_w if max_workers is None else max_workers
+    workers = max(1, min(w, len(ids)))
+
+    created: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(run_curricullm_for_student, sid): sid for sid in ids}
+        for fut in as_completed(futures):
+            sid, payload, bundle, err, status = fut.result()
+            if err:
+                if reraise_server_error and status is not None and status >= 500:
+                    raise AppException(err, status)
+                skipped.append({"student_id": sid, "reason": err})
+                continue
+            assert payload is not None and bundle is not None
+            db = SessionLocal()
+            try:
+                try:
+                    row = persist_ai_report_bundle(db, sid, term, bundle, payload)
+                    created.append({"student_id": sid, "report_id": row.id})
+                except Exception as exc:
+                    db.rollback()
+                    skipped.append({"student_id": sid, "reason": str(exc)})
+            finally:
+                db.close()
+
+    return created, skipped
+
+
+def create_ai_report_for_student(db: Session, student_id: int, term: str = "Term 2") -> AIReport:
+    payload = fetch_student_payload(db, student_id)
+    if not payload:
+        raise AppException("Student not found", 404)
+    if not payload["weekly_records"]:
+        raise AppException("No weekly records for this student; add grades before generating a report.", 400)
+
+    try:
+        bundle = generate_parent_report_json(payload)
+    except ValueError as e:
+        raise AppException(str(e), 503)
+
+    return persist_ai_report_bundle(db, student_id, term, bundle, payload)
 
 
 def assert_teacher_for_student(db: Session, teacher_id: int, student_id: int) -> None:

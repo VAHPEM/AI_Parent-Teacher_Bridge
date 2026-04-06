@@ -17,6 +17,7 @@ from app.services.ai_report_service import (
     confidence_from_risk,
     create_ai_report_for_student,
     delete_stub_reports_for_class,
+    generate_ai_reports_for_students_parallel,
 )
 from datetime import datetime
 
@@ -290,8 +291,8 @@ class TeacherService:
             }
 
         seen: set[int] = set()
-        created: list[dict] = []
         skipped: list[dict] = []
+        to_process: list[int] = []
 
         for sid in student_ids:
             if sid in seen:
@@ -305,13 +306,18 @@ class TeacherService:
             if not stu:
                 skipped.append({"student_id": sid, "reason": "Student not in class"})
                 continue
-            try:
-                row = create_ai_report_for_student(db, sid, term=term)
-                created.append({"student_id": sid, "report_id": row.id})
-            except AppException as e:
-                skipped.append({"student_id": sid, "reason": e.message})
+            to_process.append(sid)
 
-        return {"ok": True, "created": created, "skipped": skipped}
+        par_created, par_skipped = generate_ai_reports_for_students_parallel(
+            to_process,
+            term,
+            reraise_server_error=False,
+        )
+        return {
+            "ok": True,
+            "created": par_created,
+            "skipped": skipped + par_skipped,
+        }
 
     # ── AI Analysis ───────────────────────────────────────────────────
     @staticmethod
@@ -516,21 +522,25 @@ class TeacherService:
         removed_stubs = delete_stub_reports_for_class(db, class_id)
 
         students = db.query(Student).filter(Student.class_id == class_id).all()
-        created: list[dict] = []
-        skipped: list[dict] = []
+        student_ids = [s.id for s in students]
 
-        for s in students:
-            try:
-                row = create_ai_report_for_student(db, s.id, term=term)
-                created.append({"student_id": s.id, "report_id": row.id, "week_number": row.week_number})
-            except AppException as e:
-                if e.status_code >= 500:
-                    raise
-                msg = (e.message or "").lower()
-                if "weekly records" in msg or "student not found" in msg:
-                    skipped.append({"student_id": s.id, "reason": e.message})
-                else:
-                    skipped.append({"student_id": s.id, "reason": e.message})
+        created_raw, skipped = generate_ai_reports_for_students_parallel(
+            student_ids,
+            term,
+            reraise_server_error=True,
+        )
+
+        created = []
+        for c in created_raw:
+            rid = c["report_id"]
+            r = db.query(AIReport).filter(AIReport.id == rid).first()
+            created.append(
+                {
+                    "student_id": c["student_id"],
+                    "report_id": rid,
+                    "week_number": r.week_number if r else None,
+                }
+            )
 
         return {
             "generated": len(created),

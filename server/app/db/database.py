@@ -14,7 +14,7 @@ def _resolve_database_url() -> str:
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
     name = os.getenv("DB_NAME", "test")
-    user = os.getenv("DB_USER", "postgres")
+    user = os.getenv("DB_USER", "mymac")
     password = os.getenv("DB_PASSWORD", "") or ""
     if password:
         auth = f"{quote_plus(user)}:{quote_plus(password)}"

@@ -6,6 +6,8 @@ from typing import Any
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from app.services.prompt_builder import build_prompt
+
 load_dotenv()
 
 
@@ -25,7 +27,7 @@ def generate_parent_report_json(student_payload: dict[str, Any]) -> dict[str, An
         raise ValueError("CURRICULLM_API_KEY is not set")
 
     model = os.getenv("CURRICULLM_MODEL", "gpt-4o-mini")
-    prompt = json.dumps(_build_report_prompt_body(student_payload), ensure_ascii=False, indent=2)
+    prompt = build_prompt(student_payload, rag_context=None)
 
     response = client.chat.completions.create(
         model=model,
@@ -35,10 +37,9 @@ def generate_parent_report_json(student_payload: dict[str, Any]) -> dict[str, An
                 "role": "system",
                 "content": (
                     "You are an educational AI assistant powered by CurricuLLM. "
-                    "Generate a weekly parent progress report from student learning data. "
-                    "Align suggestions with sound curriculum practice (e.g. ACARA-style outcomes where relevant). "
-                    "Use simple parent-friendly language. "
-                    "Return only valid JSON. Do not include markdown fences."
+                    "Follow the user's JSON instructions exactly. "
+                    "Return a single JSON object with keys 'report' and 'activities' only. "
+                    "Do not use markdown code fences."
                 ),
             },
             {"role": "user", "content": prompt},
@@ -48,9 +49,28 @@ def generate_parent_report_json(student_payload: dict[str, Any]) -> dict[str, An
     content = (response.choices[0].message.content or "").strip()
     content = _strip_json_markdown(content)
     try:
-        return json.loads(content)
+        data = json.loads(content)
     except json.JSONDecodeError as exc:
         raise ValueError(f"Model did not return valid JSON.\nRaw:\n{content}") from exc
+
+    return _normalize_llm_payload(data)
+
+
+def _normalize_llm_payload(data: Any) -> dict[str, Any]:
+    """
+    New shape: { "report": {...}, "activities": [...] }.
+    Legacy flat report (single object with parent_summary / strengths) still supported.
+    """
+    if not isinstance(data, dict):
+        return {"report": {}, "activities": []}
+    if "report" in data and isinstance(data["report"], dict):
+        acts = data.get("activities")
+        if acts is None:
+            acts = []
+        if not isinstance(acts, list):
+            acts = [acts] if isinstance(acts, dict) else []
+        return {"report": data["report"], "activities": acts}
+    return {"report": data, "activities": []}
 
 
 def _strip_json_markdown(raw: str) -> str:
@@ -88,42 +108,3 @@ def parent_chat_completion(report_context: str, parent_question: str, student_fi
     return (response.choices[0].message.content or "").strip() or (
         "I do not have enough in the progress summary to answer that. Please ask your child's teacher."
     )
-
-
-def _build_report_prompt_body(student_payload: dict[str, Any]) -> dict[str, Any]:
-    student = student_payload["student"]
-    latest_week = student_payload["latest_week"]
-    records = student_payload["weekly_records"]
-
-    return {
-        "task": "Create a weekly parent report for one student.",
-        "requirements": [
-            "Identify strengths based on positive performance or improvement trends.",
-            "Identify support areas based on low scores, repeated struggles, or concerning comments.",
-            "Write parent_summary as a rich paragraph (not a single generic sentence): weave in themes from weekly_records and teacher_comment where relevant.",
-            "Suggest 3–6 concrete parent_actions (short bullet strings).",
-            "curriculum_ref: one sentence naming the main curriculum strand / achievement standard focus (e.g. ACARA numeracy, literacy) inferred from the subjects in weekly_records.",
-            "Set risk_level as low, medium, or high (student learning risk).",
-            "Set needs_teacher_followup to true only when teacher intervention is likely needed.",
-        ],
-        "return_json_schema": {
-            "student_id": "integer",
-            "week_number": "integer",
-            "strengths": ["string"],
-            "support_areas": ["string"],
-            "parent_summary": "string",
-            "parent_actions": ["string"],
-            "curriculum_ref": "string",
-            "risk_level": "low | medium | high",
-            "needs_teacher_followup": "boolean",
-        },
-        "student_profile": {
-            "student_id": student["student_id"],
-            "student_name": student["student_name"],
-            "class_name": student["class_name"],
-            "grade_level": student["grade_level"],
-            "preferred_language": student["parent"]["preferred_language"],
-        },
-        "latest_week": latest_week,
-        "weekly_records": records,
-    }

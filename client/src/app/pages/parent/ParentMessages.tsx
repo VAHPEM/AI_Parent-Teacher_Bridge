@@ -41,6 +41,7 @@ export function ParentMessages() {
   const [aiTyping, setAiTyping] = useState(false);
   const aiBottomRef = useRef<HTMLDivElement>(null);
   const teacherBottomRef = useRef<HTMLDivElement>(null);
+  const aiSessionIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!student) return;
@@ -69,6 +70,10 @@ export function ParentMessages() {
       setLoading(false);
     });
   }, [student?.id, language]);
+
+  useEffect(() => {
+    aiSessionIdRef.current = null;
+  }, [student?.id]);
 
   const selectedTeacher = teacherData.find(t => t.id === selectedTeacherId);
 
@@ -100,8 +105,12 @@ export function ParentMessages() {
     setAiMessages(prev => [...prev, { id: prev.length + 1, from: "user", content: question, timestamp: t("just_now", { ns: "common" }) }]);
     setAiInput("");
     setAiTyping(true);
-    api.post<{reply: string}>(`/parent/chat/${student.id}?parent_id=${DEMO_PARENT_ID}`, { message: question })
+    const body: { message: string; session_id?: number } = { message: question };
+    if (aiSessionIdRef.current != null) body.session_id = aiSessionIdRef.current;
+
+    api.post<{ reply: string; session_id?: number }>(`/parent/chat/${student.id}?parent_id=${DEMO_PARENT_ID}`, body)
       .then(res => {
+        if (typeof res.session_id === "number") aiSessionIdRef.current = res.session_id;
         setAiMessages(prev => [...prev, { id: prev.length + 1, from: "ai", content: res.reply, timestamp: t("just_now", { ns: "common" }) }]);
       })
       .catch(() => {
