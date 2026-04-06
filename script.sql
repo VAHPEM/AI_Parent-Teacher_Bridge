@@ -121,6 +121,7 @@ CREATE TABLE assessment_scores (
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     score NUMERIC(10,2),
     grade VARCHAR(20),
+    participation VARCHAR(100),
     comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (assessment_id, student_id)
@@ -155,7 +156,7 @@ CREATE TABLE weekly_observations (
     subject_id INT REFERENCES subjects(id) ON DELETE SET NULL,
     term VARCHAR(50),
     week_number INT NOT NULL,
-    participation VARCHAR(100),
+    participation TEXT,
     trend VARCHAR(100),
     concerns TEXT,
     teacher_comment TEXT,
@@ -406,18 +407,17 @@ VALUES
 -- =========================================================
 INSERT INTO subjects (subject_name)
 VALUES
-    ('Math'),
+    ('Mathematics'),
     ('English'),
     ('Science'),
-    ('Health & PE'),
-    ('Art')
+    ('HASS'),
+    ('Health & PE')
 ON CONFLICT (subject_name) DO NOTHING;
 
 
 -- =========================================================
 -- CLASS_SUBJECTS
--- All classes: Math, English, Science, Health & PE
--- Year 6 class (6A): + Art
+-- All classes: Mathematics, English, Science, HASS, Health & PE
 -- =========================================================
 
 -- 5A
@@ -426,7 +426,7 @@ SELECT
     c.id,
     s.id
 FROM classes c
-JOIN subjects s ON s.subject_name IN ('Math', 'English', 'Science', 'Health & PE')
+JOIN subjects s ON s.subject_name IN ('Mathematics', 'English', 'Science', 'HASS', 'Health & PE')
 WHERE c.name = '5A'
 ON CONFLICT (class_id, subject_id) DO NOTHING;
 
@@ -436,7 +436,7 @@ SELECT
     c.id,
     s.id
 FROM classes c
-JOIN subjects s ON s.subject_name IN ('Math', 'English', 'Science', 'Health & PE')
+JOIN subjects s ON s.subject_name IN ('Mathematics', 'English', 'Science', 'HASS', 'Health & PE')
 WHERE c.name = '5B'
 ON CONFLICT (class_id, subject_id) DO NOTHING;
 
@@ -446,318 +446,75 @@ SELECT
     c.id,
     s.id
 FROM classes c
-JOIN subjects s ON s.subject_name IN ('Math', 'English', 'Science', 'Health & PE', 'Art')
+JOIN subjects s ON s.subject_name IN ('Mathematics', 'English', 'Science', 'HASS', 'Health & PE')
 WHERE c.name = '6A'
 ON CONFLICT (class_id, subject_id) DO NOTHING;
 
-INSERT INTO assessments (
-    subject_id,
-    assessment_name,
-    assessment_type,
-    term,
-    week_number,
-    due_date,
-    max_score
-)
-SELECT id, 'Subject Knowledge Quiz', 'Quiz', 'Term 1', 1, DATE '2026-02-09', 100
-FROM subjects
-
+-- Term 1 assessments (weeks 1, 3, 6, 9) — max_score 100
+INSERT INTO assessments (subject_id, assessment_name, assessment_type, term, week_number, due_date, max_score)
+SELECT id, 'Subject Knowledge Quiz',   'Quiz',       'Term 1', 1, DATE '2026-02-09', 100 FROM subjects
 UNION ALL
-
-SELECT id, 'Skills Practice Task', 'Worksheet', 'Term 1', 3, DATE '2026-02-23', 100
-FROM subjects
-
+SELECT id, 'Skills Practice Task',     'Worksheet',  'Term 1', 3, DATE '2026-02-23', 100 FROM subjects
 UNION ALL
-
-SELECT id, 'Applied Learning Project', 'Project', 'Term 1', 6, DATE '2026-03-16', 100
-FROM subjects
-
+SELECT id, 'Applied Learning Project', 'Project',    'Term 1', 6, DATE '2026-03-16', 100 FROM subjects
 UNION ALL
+SELECT id, 'End of Term Assessment',   'Final Task', 'Term 1', 9, DATE '2026-04-06', 100 FROM subjects;
 
-SELECT id, 'End of Term Assessment', 'Final Task', 'Term 1', 9, DATE '2026-04-06', 100
-FROM subjects;
+-- Term 2 assessments (weeks 6, 7, 8) — 2 per week, all max_score = 100
+INSERT INTO assessments (subject_id, assessment_name, assessment_type, term, week_number, due_date, max_score)
+SELECT s.id, a.name, a.atype, 'Term 2', a.wk, a.due, 100
+FROM subjects s
+CROSS JOIN (VALUES
+    ('English',     'Reading Comprehension Quiz', 'Quiz',      6, DATE '2026-05-11'),
+    ('English',     'Writing Task',               'Worksheet', 6, DATE '2026-05-13'),
+    ('English',     'Vocabulary Test',            'Quiz',      7, DATE '2026-05-18'),
+    ('English',     'Short Response Task',        'Worksheet', 7, DATE '2026-05-20'),
+    ('English',     'Mid-Term Assessment',        'Test',      8, DATE '2026-05-25'),
+    ('English',     'Project Presentation',       'Project',   8, DATE '2026-05-27'),
 
-INSERT INTO assessment_scores (
-    assessment_id,
-    student_id,
-    score,
-    grade,
-    comment
-)
-SELECT
-    a.id AS assessment_id,
-    st.id AS student_id,
+    ('Mathematics', 'Number & Algebra Quiz',      'Quiz',      6, DATE '2026-05-11'),
+    ('Mathematics', 'Problem Solving Worksheet',  'Worksheet', 6, DATE '2026-05-13'),
+    ('Mathematics', 'Fractions Test',             'Quiz',      7, DATE '2026-05-18'),
+    ('Mathematics', 'Data & Statistics Task',     'Worksheet', 7, DATE '2026-05-20'),
+    ('Mathematics', 'Mid-Term Maths Test',        'Test',      8, DATE '2026-05-25'),
+    ('Mathematics', 'Geometry Project',           'Project',   8, DATE '2026-05-27'),
 
-    -- score
-    CASE
-        WHEN s.subject_name = 'Math' THEN
-            CASE a.week_number
-                WHEN 1 THEN 62 + (st.id % 18)
-                WHEN 3 THEN 60 + (st.id % 20)
-                WHEN 6 THEN 58 + (st.id % 22)
-                WHEN 9 THEN 64 + (st.id % 18)
-            END
+    ('Science',     'Science Concepts Quiz',      'Quiz',      6, DATE '2026-05-11'),
+    ('Science',     'Lab Observation Report',     'Worksheet', 6, DATE '2026-05-13'),
+    ('Science',     'Inquiry Skills Test',        'Quiz',      7, DATE '2026-05-18'),
+    ('Science',     'Hypothesis Worksheet',       'Worksheet', 7, DATE '2026-05-20'),
+    ('Science',     'Mid-Term Science Test',      'Test',      8, DATE '2026-05-25'),
+    ('Science',     'Science Fair Project',       'Project',   8, DATE '2026-05-27'),
 
-        WHEN s.subject_name = 'English' THEN
-            CASE a.week_number
-                WHEN 1 THEN 68 + (st.id % 16)
-                WHEN 3 THEN 66 + (st.id % 18)
-                WHEN 6 THEN 70 + (st.id % 15)
-                WHEN 9 THEN 72 + (st.id % 14)
-            END
+    ('HASS',        'Geography Quiz',             'Quiz',      6, DATE '2026-05-11'),
+    ('HASS',        'History Research Task',      'Worksheet', 6, DATE '2026-05-13'),
+    ('HASS',        'Civics & Citizenship Test',  'Quiz',      7, DATE '2026-05-18'),
+    ('HASS',        'Economics Worksheet',        'Worksheet', 7, DATE '2026-05-20'),
+    ('HASS',        'Mid-Term HASS Assessment',   'Test',      8, DATE '2026-05-25'),
+    ('HASS',        'Community Project',          'Project',   8, DATE '2026-05-27'),
 
-        WHEN s.subject_name = 'Science' THEN
-            CASE a.week_number
-                WHEN 1 THEN 64 + (st.id % 17)
-                WHEN 3 THEN 63 + (st.id % 18)
-                WHEN 6 THEN 65 + (st.id % 16)
-                WHEN 9 THEN 67 + (st.id % 15)
-            END
+    ('Health & PE', 'Fitness Skills Quiz',        'Quiz',      6, DATE '2026-05-11'),
+    ('Health & PE', 'Movement Assessment',        'Worksheet', 6, DATE '2026-05-13'),
+    ('Health & PE', 'Health & Wellbeing Test',    'Quiz',      7, DATE '2026-05-18'),
+    ('Health & PE', 'Sports Skills Worksheet',    'Worksheet', 7, DATE '2026-05-20'),
+    ('Health & PE', 'Mid-Term PE Assessment',     'Test',      8, DATE '2026-05-25'),
+    ('Health & PE', 'Team Sports Project',        'Project',   8, DATE '2026-05-27')
+) AS a(subj, name, atype, wk, due)
+WHERE s.subject_name = a.subj;
 
-        WHEN s.subject_name = 'Health & PE' THEN
-            CASE a.week_number
-                WHEN 1 THEN 72 + (st.id % 14)
-                WHEN 3 THEN 74 + (st.id % 12)
-                WHEN 6 THEN 73 + (st.id % 13)
-                WHEN 9 THEN 75 + (st.id % 11)
-            END
-
-        WHEN s.subject_name = 'Art' THEN
-            CASE a.week_number
-                WHEN 1 THEN 70 + (st.id % 15)
-                WHEN 3 THEN 72 + (st.id % 13)
-                WHEN 6 THEN 74 + (st.id % 12)
-                WHEN 9 THEN 76 + (st.id % 10)
-            END
-    END AS score,
-
-    -- grade
-    CASE
-        WHEN
-            CASE
-                WHEN s.subject_name = 'Math' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 62 + (st.id % 18)
-                        WHEN 3 THEN 60 + (st.id % 20)
-                        WHEN 6 THEN 58 + (st.id % 22)
-                        WHEN 9 THEN 64 + (st.id % 18)
-                    END
-                WHEN s.subject_name = 'English' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 68 + (st.id % 16)
-                        WHEN 3 THEN 66 + (st.id % 18)
-                        WHEN 6 THEN 70 + (st.id % 15)
-                        WHEN 9 THEN 72 + (st.id % 14)
-                    END
-                WHEN s.subject_name = 'Science' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 64 + (st.id % 17)
-                        WHEN 3 THEN 63 + (st.id % 18)
-                        WHEN 6 THEN 65 + (st.id % 16)
-                        WHEN 9 THEN 67 + (st.id % 15)
-                    END
-                WHEN s.subject_name = 'Health & PE' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 72 + (st.id % 14)
-                        WHEN 3 THEN 74 + (st.id % 12)
-                        WHEN 6 THEN 73 + (st.id % 13)
-                        WHEN 9 THEN 75 + (st.id % 11)
-                    END
-                WHEN s.subject_name = 'Art' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 70 + (st.id % 15)
-                        WHEN 3 THEN 72 + (st.id % 13)
-                        WHEN 6 THEN 74 + (st.id % 12)
-                        WHEN 9 THEN 76 + (st.id % 10)
-                    END
-            END >= 85 THEN 'A'
-
-        WHEN
-            CASE
-                WHEN s.subject_name = 'Math' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 62 + (st.id % 18)
-                        WHEN 3 THEN 60 + (st.id % 20)
-                        WHEN 6 THEN 58 + (st.id % 22)
-                        WHEN 9 THEN 64 + (st.id % 18)
-                    END
-                WHEN s.subject_name = 'English' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 68 + (st.id % 16)
-                        WHEN 3 THEN 66 + (st.id % 18)
-                        WHEN 6 THEN 70 + (st.id % 15)
-                        WHEN 9 THEN 72 + (st.id % 14)
-                    END
-                WHEN s.subject_name = 'Science' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 64 + (st.id % 17)
-                        WHEN 3 THEN 63 + (st.id % 18)
-                        WHEN 6 THEN 65 + (st.id % 16)
-                        WHEN 9 THEN 67 + (st.id % 15)
-                    END
-                WHEN s.subject_name = 'Health & PE' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 72 + (st.id % 14)
-                        WHEN 3 THEN 74 + (st.id % 12)
-                        WHEN 6 THEN 73 + (st.id % 13)
-                        WHEN 9 THEN 75 + (st.id % 11)
-                    END
-                WHEN s.subject_name = 'Art' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 70 + (st.id % 15)
-                        WHEN 3 THEN 72 + (st.id % 13)
-                        WHEN 6 THEN 74 + (st.id % 12)
-                        WHEN 9 THEN 76 + (st.id % 10)
-                    END
-            END >= 75 THEN 'B'
-
-        WHEN
-            CASE
-                WHEN s.subject_name = 'Math' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 62 + (st.id % 18)
-                        WHEN 3 THEN 60 + (st.id % 20)
-                        WHEN 6 THEN 58 + (st.id % 22)
-                        WHEN 9 THEN 64 + (st.id % 18)
-                    END
-                WHEN s.subject_name = 'English' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 68 + (st.id % 16)
-                        WHEN 3 THEN 66 + (st.id % 18)
-                        WHEN 6 THEN 70 + (st.id % 15)
-                        WHEN 9 THEN 72 + (st.id % 14)
-                    END
-                WHEN s.subject_name = 'Science' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 64 + (st.id % 17)
-                        WHEN 3 THEN 63 + (st.id % 18)
-                        WHEN 6 THEN 65 + (st.id % 16)
-                        WHEN 9 THEN 67 + (st.id % 15)
-                    END
-                WHEN s.subject_name = 'Health & PE' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 72 + (st.id % 14)
-                        WHEN 3 THEN 74 + (st.id % 12)
-                        WHEN 6 THEN 73 + (st.id % 13)
-                        WHEN 9 THEN 75 + (st.id % 11)
-                    END
-                WHEN s.subject_name = 'Art' THEN
-                    CASE a.week_number
-                        WHEN 1 THEN 70 + (st.id % 15)
-                        WHEN 3 THEN 72 + (st.id % 13)
-                        WHEN 6 THEN 74 + (st.id % 12)
-                        WHEN 9 THEN 76 + (st.id % 10)
-                    END
-            END >= 65 THEN 'C'
-        ELSE 'D'
-    END AS grade,
-
-    -- comment
-    CASE
-        WHEN s.subject_name = 'Math' THEN 'Shows developing understanding but needs continued support with problem-solving.'
-        WHEN s.subject_name = 'English' THEN 'Communicates ideas clearly and is making steady progress in literacy skills.'
-        WHEN s.subject_name = 'Science' THEN 'Demonstrates curiosity and is building confidence with scientific concepts.'
-        WHEN s.subject_name = 'Health & PE' THEN 'Participates actively and demonstrates positive effort during practical tasks.'
-        WHEN s.subject_name = 'Art' THEN 'Shows creativity and growing confidence in visual expression.'
-    END AS comment
-
+-- Score 0-100, grade auto-derived from score, comment left NULL for teacher to fill in
+-- All scores/grades/comments are NULL — teacher fills in via Grade Entry page
+INSERT INTO assessment_scores (assessment_id, student_id, score, grade, comment)
+SELECT a.id, st.id, NULL, NULL, NULL
 FROM students st
-JOIN classes c
-    ON c.id = st.class_id
-JOIN class_subjects cs
-    ON cs.class_id = c.id
-JOIN subjects s
-    ON s.id = cs.subject_id
-JOIN assessments a
-    ON a.subject_id = s.id;
+JOIN classes c         ON c.id = st.class_id
+JOIN class_subjects cs ON cs.class_id = c.id
+JOIN subjects s        ON s.id = cs.subject_id
+JOIN assessments a     ON a.subject_id = s.id;
 
-INSERT INTO weekly_records (
-    student_id,
-    week_number,
-    subject,
-    skill,
-    score,
-    teacher_comment
-)
-SELECT
-    ascore.student_id,
-    a.week_number,
-    s.subject_name AS subject,
-    a.assessment_name AS skill,
-    ascore.score,
-    ascore.comment AS teacher_comment
-FROM assessment_scores ascore
-JOIN assessments a
-    ON a.id = ascore.assessment_id
-JOIN subjects s
-    ON s.id = a.subject_id
-ORDER BY ascore.student_id, a.week_number, s.subject_name;
+-- weekly_records are populated automatically when teacher submits grades via Grade Entry page
 
-INSERT INTO weekly_observations (
-    student_id,
-    teacher_id,
-    class_id,
-    subject_id,
-    term,
-    week_number,
-    participation,
-    trend,
-    concerns,
-    teacher_comment,
-    curriculum_ref
-)
-SELECT
-    st.id AS student_id,
-    c.teacher_id,
-    c.id AS class_id,
-    NULL AS subject_id,
-    'Term 1' AS term,
-    a.week_number,
-
-    CASE
-        WHEN AVG(ascore.score) >= 80 THEN 'Excellent'
-        WHEN AVG(ascore.score) >= 70 THEN 'Good'
-        WHEN AVG(ascore.score) >= 60 THEN 'Satisfactory'
-        ELSE 'Needs Improvement'
-    END AS participation,
-
-    CASE
-        WHEN a.week_number = 1 THEN 'Baseline established'
-        WHEN AVG(ascore.score) >= 75 THEN 'Improving'
-        WHEN AVG(ascore.score) >= 65 THEN 'Stable'
-        ELSE 'Needs support'
-    END AS trend,
-
-    CASE
-        WHEN AVG(ascore.score) < 60 THEN 'Needs additional support to build confidence and understanding.'
-        WHEN AVG(ascore.score) < 70 THEN 'Would benefit from regular revision and guided practice.'
-        ELSE 'No major concerns this week.'
-    END AS concerns,
-
-    CASE
-        WHEN AVG(ascore.score) >= 80 THEN 'The student engaged very well this week and demonstrated strong understanding across learning tasks.'
-        WHEN AVG(ascore.score) >= 70 THEN 'The student participated well this week and is making steady progress in class activities.'
-        WHEN AVG(ascore.score) >= 60 THEN 'The student is showing developing understanding and would benefit from continued guided practice.'
-        ELSE 'The student found some tasks challenging this week and may need extra support at home and in class.'
-    END AS teacher_comment,
-
-    'Australian Curriculum aligned weekly summary' AS curriculum_ref
-
-FROM assessment_scores ascore
-JOIN assessments a
-    ON a.id = ascore.assessment_id
-JOIN students st
-    ON st.id = ascore.student_id
-JOIN classes c
-    ON c.id = st.class_id
-GROUP BY
-    st.id,
-    c.teacher_id,
-    c.id,
-    a.week_number
-ORDER BY
-    st.id,
-    a.week_number;
+-- weekly_observations are populated automatically when teacher submits grades via Grade Entry page
 
 
 -- =========================================================
@@ -771,3 +528,14 @@ CREATE TABLE translation_cache (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_translation_cache_hash_lang ON translation_cache(payload_hash, language);
+
+
+-- Delete everyone from 5A except Mia Miller and Benjamin Taylor
+DELETE FROM students
+WHERE class_id = (SELECT id FROM classes WHERE name = '5A')
+  AND name NOT IN ('Mia Miller', 'Benjamin Taylor');
+
+-- Delete everyone from 5B except Isabella Davis and James Miller
+DELETE FROM students
+WHERE class_id = (SELECT id FROM classes WHERE name = '5B')
+  AND name NOT IN ('Isabella Davis', 'James Miller');
