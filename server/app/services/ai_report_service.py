@@ -201,9 +201,9 @@ def validate_and_normalize_report(report: dict[str, Any], student_payload: dict[
     )
     cref = str(cref).strip()
 
-    parent_actions = _ensure_list_of_strings(report.get("parent_actions", []))
-    if not parent_actions:
-        parent_actions = _ensure_list_of_strings(report.get("recommendations", []))
+    recommendations = _ensure_list_of_strings(report.get("parent_actions", []))
+    if not recommendations:
+        recommendations = _ensure_list_of_strings(report.get("recommendations", []))
 
     parent_summary = str(
         report.get("parent_summary") or report.get("summary") or ""
@@ -215,7 +215,7 @@ def validate_and_normalize_report(report: dict[str, Any], student_payload: dict[
         "strengths": _ensure_list_of_strings(report.get("strengths", [])),
         "support_areas": _ensure_list_of_strings(report.get("support_areas", [])),
         "parent_summary": parent_summary,
-        "parent_actions": parent_actions,
+        "recommendations": recommendations,
         "curriculum_ref": cref,
         "risk_level": calculated_risk,
     }
@@ -309,7 +309,7 @@ def persist_ai_report_bundle(
         status = "auto_approved"
         teacher_ok = True
 
-    acts = normalized["parent_actions"]
+    recs = normalized["recommendations"]
     row = AIReport(
         student_id=normalized["student_id"],
         week_number=normalized["week_number"],
@@ -317,9 +317,7 @@ def persist_ai_report_bundle(
         summary=normalized["parent_summary"],
         strengths=normalized["strengths"],
         support_areas=normalized["support_areas"],
-        improvement_areas=[],
-        parent_actions=acts,
-        recommendations=list(acts),
+        recommendations=list(recs),
         curriculum_ref=normalized["curriculum_ref"] or None,
         risk_level=risk,
         status=status,

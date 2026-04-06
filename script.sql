@@ -176,8 +176,6 @@ CREATE TABLE ai_reports (
     summary TEXT,
     strengths JSONB,
     support_areas JSONB,
-    improvement_areas JSONB,
-    parent_actions JSONB,
     recommendations JSONB,
     risk_level VARCHAR(20),
     curriculum_ref VARCHAR(255),

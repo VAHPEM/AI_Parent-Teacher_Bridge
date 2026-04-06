@@ -36,7 +36,7 @@ def _report_context_block(report: AIReport, student_name: str) -> str:
         f"Summary: {report.summary or ''}",
         f"Strengths: {report.strengths or []}",
         f"Support areas: {report.support_areas or []}",
-        f"Suggested parent actions: {report.parent_actions or []}",
+        f"Suggested recommendations: {report.recommendations or []}",
         f"Risk level (internal): {report.risk_level or 'unknown'}",
     ]
     if report.teacher_notes:
