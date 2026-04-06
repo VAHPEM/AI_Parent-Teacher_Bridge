@@ -78,7 +78,7 @@ export function ParentAIChat() {
   const loadSession = (sessionId: number) => {
     if (!student) return;
     setActiveSessionId(sessionId);
-    api.get<Message[]>(`/parent/chat/sessions/${student.id}/messages?session_id=${sessionId}`)
+    api.get<Message[]>(`/parent/chat/sessions/${student.id}/messages?session_id=${sessionId}&parent_id=${DEMO_PARENT_ID}`)
       .then(data => setMessages(data))
       .catch(() => setMessages([]));
   };
@@ -138,8 +138,9 @@ export function ParentAIChat() {
         s.id === sessionId && s.title === "New Chat" ? { ...s, title: question.slice(0, 60) } : s
       ));
 
-      api.post<{ reply: string }>(`/parent/chat/${student.id}?parent_id=${DEMO_PARENT_ID}`, { message: question, session_id: sessionId })
+      api.post<{ reply: string; session_id?: number }>(`/parent/chat/${student.id}?parent_id=${DEMO_PARENT_ID}`, { message: question, session_id: sessionId })
         .then(res => {
+          if (typeof res.session_id === "number") setActiveSessionId(res.session_id);
           setMessages(prev => [...prev, { id: Date.now() + 1, role: "ai", content: res.reply, created_at: new Date().toISOString() }]);
         })
         .catch(() => {

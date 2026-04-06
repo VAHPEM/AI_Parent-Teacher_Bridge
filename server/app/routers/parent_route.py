@@ -81,8 +81,13 @@ def delete_chat_session(session_id: int, parent_id: int = Query(...), db: Sessio
 
 
 @router.get("/chat/sessions/{student_id}/messages")
-def get_session_messages(student_id: int, session_id: int = Query(...), db: Session = Depends(get_db)):
-    data = ParentService.get_session_messages(db, session_id)
+def get_session_messages(
+    student_id: int,
+    session_id: int = Query(...),
+    parent_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    data = ParentService.get_session_messages(db, session_id, student_id, parent_id)
     return ApiResponse(body=data, message="success")
 
 
@@ -93,14 +98,27 @@ def parent_chat_endpoint(
     parent_id: int = Query(...),
     db: Session = Depends(get_db),
 ):
-    pref_lang = ParentService._get_parent_language(db, parent_id)
-    ParentService.add_chat_message(db, payload.session_id, "parent", payload.message)
-    ai_reply_en = "I don't have enough data to answer that. Please ask the teacher directly."
-    translated_reply = TranslationService.translate_from_english(ai_reply_en,
-                                                                 pref_lang) if pref_lang != "en" else ai_reply_en
-    ParentService.add_chat_message(db, payload.session_id, "ai", translated_reply)
+    pref_lang = ParentService._get_parent_language(db, parent_id) or "en"
+
+    if payload.session_id is None:
+        created = ParentService.create_chat_session(db, student_id, parent_id, pref_lang)
+        session_id = int(created["id"])
+    else:
+        session_id = payload.session_id
+        ParentService.assert_chat_session(db, session_id, student_id, parent_id)
+
+    ParentService.add_chat_message(db, session_id, "parent", payload.message)
     data = parent_chat(db, student_id, parent_id, payload.message)
-    return ApiResponse(body=data, message="success")
+    reply_en = str(data.get("reply") or "").strip()
+
+    if pref_lang != "en":
+        reply_out = TranslationService.translate_from_english(reply_en, pref_lang)
+    else:
+        reply_out = reply_en
+
+    ParentService.add_chat_message(db, session_id, "ai", reply_out)
+    body = {**data, "reply": reply_out, "session_id": session_id}
+    return ApiResponse(body=body, message="success")
 
 
 @router.get("/questions/{student_id}")
