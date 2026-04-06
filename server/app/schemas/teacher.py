@@ -112,6 +112,12 @@ class AIReportRevisionPayload(BaseModel):
     teacher_notes: Optional[str] = None
 
 
+class ActivityUpdatePayload(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    steps: Optional[list[str]] = None
+
+
 class RespondCreate(BaseModel):
     response: str
     method: str = "ai"

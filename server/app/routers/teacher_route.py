@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.dto.api_response import ApiResponse
 from app.services.teacher_service import TeacherService
-from app.schemas.teacher import GradeEntrySubmit, RespondCreate, AIReportRevisionPayload
+from app.schemas.teacher import GradeEntrySubmit, RespondCreate, AIReportRevisionPayload, ActivityUpdatePayload
 from app.models.teacher import Teacher
 
 router = APIRouter(prefix="/teacher", tags=["Teacher"])
@@ -91,8 +91,14 @@ def submit_grades(
 
 
 @router.get("/ai-analysis")
-def get_ai_analysis(confidence: str = Query(None), db: Session = Depends(get_db)):
-    data = TeacherService.get_ai_analysis(db, confidence)
+def get_ai_analysis(teacher_id: int = Query(...), confidence: str = Query(None), db: Session = Depends(get_db)):
+    data = TeacherService.get_ai_analysis(db, teacher_id, confidence)
+    return ApiResponse(body=data, message="success")
+
+
+@router.put("/activities/{activity_id}")
+def update_activity(activity_id: int, payload: ActivityUpdatePayload, db: Session = Depends(get_db)):
+    data = TeacherService.update_activity(db, activity_id, payload.title, payload.description, payload.steps)
     return ApiResponse(body=data, message="success")
 
 
