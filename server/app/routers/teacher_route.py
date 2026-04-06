@@ -72,10 +72,10 @@ def submit_grades(
         payload.subject, entries, "submitted"
     )
     student_ids = list({int(e["student_id"]) for e in entries})
-    # ai_reports = TeacherService.generate_ai_reports_after_grade_submit(
-    #     db, teacher_id, payload.class_id, payload.term, student_ids
-    # )
-    ai_reports = []
+    ai_reports = TeacherService.generate_ai_reports_after_grade_submit(
+        db, teacher_id, payload.class_id, payload.term, student_ids
+    )
+    # ai_reports = []
     return ApiResponse(body={**data, "ai_reports": ai_reports}, message="success")
 
 
