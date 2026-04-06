@@ -115,11 +115,13 @@ class ParentService:
         }
     @staticmethod
     def get_children(db: Session, parent_id: int) -> list:
+        # Use outer joins so parents still see children even if class/teacher not assigned yet.
         rows = (
             db.query(Student, Class, Teacher)
-            .join(Class, Student.class_id == Class.id)
-            .join(Teacher, Class.teacher_id == Teacher.id)
+            .outerjoin(Class, Student.class_id == Class.id)
+            .outerjoin(Teacher, Class.teacher_id == Teacher.id)
             .filter(Student.parent_id == parent_id)
+            .order_by(Student.id)
             .all()
         )
         result = []
@@ -132,15 +134,18 @@ class ParentService:
             )
             scores = [float(r.score) for r in records if r.score is not None]
             overall = _grade_from_score(scores[-1] if scores else None)
+            class_name = student.class_name or (cls.name if cls else None) or "Unassigned class"
+            year = student.grade_level or (cls.grade_level if cls else None) or "Year 5"
+            teacher_name = teacher.name if teacher else "Unassigned teacher"
             result.append({
                 "id":           student.id,
                 "name":         student.name,
                 "firstName":    student.name.split()[0],
                 "initials":     _initials(student.name),
                 "color":        _color(student.id),
-                "year":         student.grade_level or cls.grade_level or "Year 5",
-                "class_name":   student.class_name or cls.name,
-                "teacher":      teacher.name,
+                "year":         year,
+                "class_name":   class_name,
+                "teacher":      teacher_name,
                 "school":       "Greenwood Primary School",
                 "overallGrade": overall,
                 "attendance":   "95%",
