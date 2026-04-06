@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#EC4899", "#14B8A6", "#F97316"]
 
+SCHOOL_NAME = "Greenwood Primary School"
+
 LEVEL_MAP = {
     "A":  ("Above Expected", "#10B981", "#D1FAE5"),
     "B+": ("Above Expected", "#10B981", "#D1FAE5"),
@@ -33,7 +35,7 @@ LEVEL_MAP = {
 
 RECENT_ACTIVITY = [
     {"type": "report",  "text": "Week 8 Mathematics report added",           "time": "2 hours ago"},
-    {"type": "message", "text": "Ms. Thompson replied to your question",      "time": "Yesterday"},
+    {"type": "message", "text": "Your teacher replied to your question",       "time": "Yesterday"},
     {"type": "alert",   "text": "New English assessment available to review",  "time": "Yesterday"},
     {"type": "ai",      "text": "AI generated new home learning activities",   "time": "2 days ago"},
 ]
@@ -146,7 +148,7 @@ class ParentService:
                 "year":         year,
                 "class_name":   class_name,
                 "teacher":      teacher_name,
-                "school":       "Greenwood Primary School",
+                "school":       SCHOOL_NAME,
                 "overallGrade": overall,
                 "attendance":   "95%",
             })
@@ -372,7 +374,7 @@ class ParentService:
             "name":     teacher.name,
             "initials": _initials(teacher.name),
             "subject":  "Class Teacher",
-            "school":   "Greenwood Primary School",
+            "school":   SCHOOL_NAME,
         }]
 
     # ── Messages (backed by parent_questions + replies) ───────────────

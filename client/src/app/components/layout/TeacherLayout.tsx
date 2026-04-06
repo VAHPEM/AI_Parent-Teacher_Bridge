@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
+import { api } from "../../lib/api";
+import { DEMO_TEACHER_ID } from "../../lib/config";
 import {
   LayoutDashboard, BookOpen, ClipboardList, BrainCircuit,
   Clock, MessageCircleQuestion, FileText, RefreshCcw, Settings,
@@ -34,6 +36,12 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [teacher, setTeacher] = useState({ name: "Teacher", initials: "T" });
+
+  useEffect(() => {
+    api.get<{ name: string; initials: string }>(`/teacher/me?teacher_id=${DEMO_TEACHER_ID}`)
+      .then(data => setTeacher(data));
+  }, []);
 
   const isActive = (path: string) => {
     if (path === "/teacher") return location.pathname === "/teacher";
@@ -72,10 +80,10 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
         <div className="px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm" style={{ backgroundColor: "#2563EB", fontWeight: 600 }}>
-              MT
+              {teacher.initials}
             </div>
             <div>
-              <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>Ms. Thompson</p>
+              <p className="text-sm" style={{ fontWeight: 600, color: "#1E293B" }}>{teacher.name}</p>
               <p className="text-xs" style={{ color: "#64748B" }}>Year 5 Teacher</p>
             </div>
           </div>
@@ -144,7 +152,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: "#EF4444" }}></span>
             </button>
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs cursor-pointer" style={{ backgroundColor: "#2563EB", fontWeight: 600 }}>
-              MT
+              {teacher.initials}
             </div>
           </div>
         </header>
@@ -156,7 +164,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       </div>
 
       {/* AI Chatbot */}
-      <AIChatbot open={chatOpen} onToggle={() => setChatOpen(!chatOpen)} portal="teacher" />
+      <AIChatbot open={chatOpen} onToggle={() => setChatOpen(!chatOpen)} portal="teacher" teacherName={teacher.name} />
     </div>
   );
 }
