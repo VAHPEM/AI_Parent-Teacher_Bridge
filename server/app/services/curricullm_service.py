@@ -82,19 +82,43 @@ def _strip_json_markdown(raw: str) -> str:
     return s.strip()
 
 
-def parent_chat_completion(report_context: str, parent_question: str, student_first_name: str) -> str:
+def parent_chat_completion(
+    report_context: str,
+    parent_question: str,
+    student_first_name: str,
+    *,
+    all_first_names: list[str] | None = None,
+) -> str:
     client = _client()
     if not client:
         raise ValueError("CURRICULLM_API_KEY is not set")
 
     model = os.getenv("CURRICULLM_MODEL", "gpt-4o-mini")
-    system = (
-        "You are a helpful school assistant for parents. "
-        f"You only answer about the student {student_first_name} using the REPORT CONTEXT below. "
-        "If the answer is not supported by the report context, say you do not have that detail "
-        "and suggest they use Ask a Teacher for personal or sensitive topics. "
-        "Be warm, concise, and clear. Do not invent grades or events."
-    )
+    names = list(dict.fromkeys(all_first_names or [student_first_name]))
+    names_label = ", ".join(names)
+
+    if len(names) <= 1:
+        system = (
+            "You are a helpful school assistant for parents. "
+            f"You only answer about the student {student_first_name} using the REPORT CONTEXT below. "
+            "If the answer is not supported by the report context, say you do not have that detail "
+            "and suggest they use Ask a Teacher for personal or sensitive topics. "
+            "Be warm, concise, and clear. Do not invent grades or events."
+        )
+    else:
+        system = (
+            "You are a helpful school assistant for parents. "
+            f"The parent has several children in this account: {names_label}. "
+            "The REPORT CONTEXT has one section per child (each starts with a line like '=== Full Name ==='). "
+            f"The parent may currently be viewing {student_first_name}'s screen, but you must answer using "
+            "whichever child's section(s) apply. If the question is about one child, focus on that child. "
+            "If it is about all children or compares them, use every section that has usable data. "
+            "If a section says there is no usable report, do not invent details for that child. "
+            "If it is unclear which child they mean, ask a short clarifying question. "
+            "If the answer is not supported by the report context, say you do not have that detail "
+            "and suggest Ask a Teacher for personal or sensitive topics. "
+            "Be warm, concise, and clear. Do not invent grades or events."
+        )
     user = f"REPORT CONTEXT:\n{report_context}\n\nPARENT QUESTION:\n{parent_question}"
 
     response = client.chat.completions.create(
@@ -105,6 +129,9 @@ def parent_chat_completion(report_context: str, parent_question: str, student_fi
             {"role": "user", "content": user},
         ],
     )
-    return (response.choices[0].message.content or "").strip() or (
-        "I do not have enough in the progress summary to answer that. Please ask your child's teacher."
+    fallback = (
+        "I do not have enough in the progress summaries to answer that. Please ask your children's teacher."
+        if len(names) > 1
+        else "I do not have enough in the progress summary to answer that. Please ask your child's teacher."
     )
+    return (response.choices[0].message.content or "").strip() or fallback
