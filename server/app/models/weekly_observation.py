@@ -12,7 +12,7 @@ class WeeklyObservation(Base):
     subject_id      = Column(Integer, ForeignKey("subjects.id"))
     term            = Column(String(50))
     week_number     = Column(Integer, nullable=False)
-    participation   = Column(String(100))
+    participation   = Column(Text)
     trend           = Column(String(100))
     concerns        = Column(Text)
     teacher_comment = Column(Text)

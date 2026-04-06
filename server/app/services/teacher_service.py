@@ -6,6 +6,8 @@ from app.models.teacher import Teacher
 from app.models.subject import Subject
 from app.models.weekly_record import WeeklyRecord
 from app.models.weekly_observation import WeeklyObservation
+from app.models.assessment import Assessment
+from app.models.assessment_score import AssessmentScore
 from app.models.ai_report import AIReport
 from app.models.parent_question import ParentQuestion
 from app.models.parent import Parent
@@ -31,6 +33,7 @@ def _color(id: int) -> str:
 def _initials(name: str) -> str:
     parts = name.strip().split()
     return (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else parts[0][:2].upper()
+
 
 
 def _grade_from_score(score) -> str:
@@ -212,20 +215,60 @@ class TeacherService:
 
     # ── Grade Entry ───────────────────────────────────────────────────
     @staticmethod
-    def get_grade_entry(db: Session, class_id: int, week: int, subject: str, term: str = "Term 2") -> list:
+    def get_assessments(db: Session, class_id: int, week: int, subject: str, term: str) -> list:
+        subj = db.query(Subject).filter(Subject.subject_name == subject).first()
+        if not subj:
+            return []
+        assessments = (
+            db.query(Assessment)
+            .filter(
+                Assessment.subject_id == subj.id,
+                Assessment.week_number == week,
+                Assessment.term == term,
+            )
+            .order_by(Assessment.id)
+            .all()
+        )
+        return [
+            {
+                "id":              a.id,
+                "assessment_name": a.assessment_name,
+                "assessment_type": a.assessment_type,
+                "max_score":       float(a.max_score) if a.max_score else None,
+                "week_number":     a.week_number,
+                "term":            a.term,
+            }
+            for a in assessments
+        ]
+
+    @staticmethod
+    def get_grade_entry(db: Session, class_id: int, assessment_id: int, week: int, subject: str, term: str) -> list:
+        subj = db.query(Subject).filter(Subject.subject_name == subject).first()
+        subject_id = subj.id if subj else None
+
         students = db.query(Student).filter(Student.class_id == class_id).all()
         result = []
         for s in students:
-            record = (
-                db.query(WeeklyRecord)
+            score_row = (
+                db.query(AssessmentScore)
                 .filter(
-                    WeeklyRecord.student_id == s.id,
-                    WeeklyRecord.week_number == week,
-                    WeeklyRecord.subject == subject,
+                    AssessmentScore.assessment_id == assessment_id,
+                    AssessmentScore.student_id == s.id,
                 )
                 .first()
             )
-            score = float(record.score) if record and record.score else None
+            obs = (
+                db.query(WeeklyObservation)
+                .filter(
+                    WeeklyObservation.student_id == s.id,
+                    WeeklyObservation.week_number == week,
+                    WeeklyObservation.subject_id == subject_id,
+                )
+                .first()
+            ) if subject_id else None
+
+            score = float(score_row.score) if score_row and score_row.score else None
+            concerns_raw = obs.concerns if obs and obs.concerns else ""
             result.append({
                 "id":            s.id,
                 "student_id":    s.id,
@@ -233,40 +276,193 @@ class TeacherService:
                 "initials":      _initials(s.name),
                 "grade":         _grade_from_score(score),
                 "score":         score or 0,
-                "participation": "Satisfactory",
-                "comment":       record.teacher_comment if record else "",
-                "concerns":      [],
+                "participation": score_row.participation if score_row and score_row.participation else (obs.participation if obs else "Satisfactory"),
+                "comment":       score_row.comment if score_row else "",
+                "concerns":      [c for c in concerns_raw.split(",") if c] if concerns_raw else [],
             })
         return result
 
     @staticmethod
-    def save_grade_entry(db: Session, class_id: int, week: int, term: str, subject: str, entries: list, status: str) -> dict:
-        count = 0
+    def _recalculate_weekly_record(db: Session, student_id: int, week: int, subject: str, term: str) -> None:
+        subj = db.query(Subject).filter(Subject.subject_name == subject).first()
+        if not subj:
+            return
+
+        assessments = (
+            db.query(Assessment)
+            .filter(
+                Assessment.subject_id == subj.id,
+                Assessment.week_number == week,
+                Assessment.term == term,
+            )
+            .all()
+        )
+        if not assessments:
+            return
+
+        assessment_ids = [a.id for a in assessments]
+        scores = (
+            db.query(AssessmentScore)
+            .filter(
+                AssessmentScore.student_id == student_id,
+                AssessmentScore.assessment_id.in_(assessment_ids),
+                AssessmentScore.score.isnot(None),
+            )
+            .all()
+        )
+        if not scores:
+            return
+
+        assessment_map = {a.id: a for a in assessments}
+        total_score = 0.0
+        total_max = 0.0
+        comments = []
+
+        for sc in scores:
+            a = assessment_map.get(sc.assessment_id)
+            max_s = float(a.max_score) if a and a.max_score else 100.0
+            total_score += float(sc.score)
+            total_max += max_s
+            if sc.comment and sc.comment.strip():
+                comments.append(sc.comment.strip())
+
+        weighted_pct = round(total_score / total_max * 100, 1) if total_max > 0 else None
+        combined_comment = "; ".join(comments) if comments else None
+
+        existing = (
+            db.query(WeeklyRecord)
+            .filter(
+                WeeklyRecord.student_id == student_id,
+                WeeklyRecord.week_number == week,
+                WeeklyRecord.subject == subject,
+            )
+            .first()
+        )
+        if existing:
+            existing.score = weighted_pct
+            if combined_comment:
+                existing.teacher_comment = combined_comment
+        else:
+            db.add(WeeklyRecord(
+                student_id=student_id,
+                week_number=week,
+                subject=subject,
+                score=weighted_pct,
+                teacher_comment=combined_comment,
+            ))
+
+    @staticmethod
+    def _recalculate_weekly_observation(db: Session, student_id: int, week: int, subject_id: int, term: str) -> None:
+        """Join participation from all assessment_scores this week/subject → weekly_observation.
+        Same pattern as _recalculate_weekly_record joining teacher comments."""
+        scores = (
+            db.query(AssessmentScore)
+            .join(Assessment, AssessmentScore.assessment_id == Assessment.id)
+            .filter(
+                AssessmentScore.student_id == student_id,
+                Assessment.week_number == week,
+                Assessment.term == term,
+                Assessment.subject_id == subject_id,
+                AssessmentScore.participation.isnot(None),
+            )
+            .order_by(Assessment.id)
+            .all()
+        )
+        if not scores:
+            return
+
+        combined = "; ".join(s.participation for s in scores if s.participation)
+        if not combined:
+            return
+
+        obs = (
+            db.query(WeeklyObservation)
+            .filter(
+                WeeklyObservation.student_id == student_id,
+                WeeklyObservation.week_number == week,
+                WeeklyObservation.subject_id == subject_id,
+            )
+            .first()
+        )
+        if obs:
+            obs.participation = combined
+        else:
+            db.add(WeeklyObservation(
+                student_id=student_id,
+                week_number=week,
+                subject_id=subject_id,
+                term=term,
+                participation=combined,
+            ))
+
+    @staticmethod
+    def save_grade_entry(db: Session, class_id: int, assessment_id: int, week: int, term: str, subject: str, entries: list, status: str) -> dict:
+        subj = db.query(Subject).filter(Subject.subject_name == subject).first()
+        subject_id = subj.id if subj else None
+
         for entry in entries:
-            existing = (
-                db.query(WeeklyRecord)
+            student_id = entry["student_id"]
+
+            # Upsert assessment_score
+            existing_score = (
+                db.query(AssessmentScore)
                 .filter(
-                    WeeklyRecord.student_id == entry["student_id"],
-                    WeeklyRecord.week_number == week,
-                    WeeklyRecord.subject == subject,
+                    AssessmentScore.assessment_id == assessment_id,
+                    AssessmentScore.student_id == student_id,
                 )
                 .first()
             )
-            if existing:
-                existing.score           = entry.get("score")
-                existing.teacher_comment = entry.get("comment")
+            auto_grade = _grade_from_score(entry.get("score"))
+            participation = entry.get("participation")
+            if existing_score:
+                existing_score.score         = entry.get("score")
+                existing_score.grade         = auto_grade
+                existing_score.participation = participation
+                existing_score.comment       = entry.get("comment")
             else:
-                record = WeeklyRecord(
-                    student_id=entry["student_id"],
-                    week_number=week,
-                    subject=subject,
+                db.add(AssessmentScore(
+                    assessment_id=assessment_id,
+                    student_id=student_id,
                     score=entry.get("score"),
-                    teacher_comment=entry.get("comment"),
+                    grade=auto_grade,
+                    participation=participation,
+                    comment=entry.get("comment"),
+                ))
+
+            # Upsert weekly_observation for concerns only (participation is aggregated below)
+            concerns = entry.get("concerns") or []
+            if subject_id and concerns:
+                obs = (
+                    db.query(WeeklyObservation)
+                    .filter(
+                        WeeklyObservation.student_id == student_id,
+                        WeeklyObservation.week_number == week,
+                        WeeklyObservation.subject_id == subject_id,
+                    )
+                    .first()
                 )
-                db.add(record)
-            count += 1
+                concerns_str = ",".join(concerns)
+                if obs:
+                    obs.concerns = concerns_str
+                else:
+                    db.add(WeeklyObservation(
+                        student_id=student_id,
+                        week_number=week,
+                        subject_id=subject_id,
+                        term=term,
+                        concerns=concerns_str,
+                    ))
+
+        db.flush()
+
+        for entry in entries:
+            sid = entry["student_id"]
+            TeacherService._recalculate_weekly_record(db, sid, week, subject, term)
+            if subject_id:
+                TeacherService._recalculate_weekly_observation(db, sid, week, subject_id, term)
+
         db.commit()
-        return {"message": "Draft saved" if status == "draft" else "Submitted", "count": count}
+        return {"message": "Draft saved" if status == "draft" else "Submitted", "count": len(entries)}
 
     @staticmethod
     def generate_ai_reports_after_grade_submit(

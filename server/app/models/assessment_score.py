@@ -10,6 +10,7 @@ class AssessmentScore(Base):
     student_id    = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
     score         = Column(Numeric(10, 2))
     grade         = Column(String(20))
+    participation = Column(String(100))
     comment       = Column(Text)
     created_at    = Column(TIMESTAMP, server_default=func.now())
 
