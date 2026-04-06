@@ -776,15 +776,29 @@ class TeacherService:
 
     # ── Reports (backed by ai_reports) ────────────────────────────────
     @staticmethod
-    def get_reports(db: Session, teacher_id: int) -> dict:
-        cls = db.query(Class).filter(Class.teacher_id == teacher_id).first()
-        student_ids = [
-            s.id for s in db.query(Student).filter(Student.class_id == cls.id).all()
-        ] if cls else []
+    def get_reports(db: Session, teacher_id: int, class_id: int | None = None) -> dict:
+        # Build the list of classes to include
+        if class_id is not None:
+            cls = db.query(Class).filter(Class.id == class_id, Class.teacher_id == teacher_id).first()
+            if not cls:
+                raise AppException("Class not found or not owned by this teacher", 404)
+            classes = [cls]
+        else:
+            classes = db.query(Class).filter(Class.teacher_id == teacher_id).all()
+
+        # Map class_id → class for fast lookup
+        class_map = {c.id: c for c in classes}
+        class_ids = list(class_map.keys())
+
+        # Get all students in the relevant classes
+        students = db.query(Student).filter(Student.class_id.in_(class_ids)).all() if class_ids else []
+        student_map = {s.id: s for s in students}
+        student_ids = [s.id for s in students]
+        student_class_map = {s.id: s.class_id for s in students}
 
         reports = (
             db.query(AIReport)
-            .filter(AIReport.student_id.in_(student_ids) if student_ids else True)
+            .filter(AIReport.student_id.in_(student_ids) if student_ids else False)
             .order_by(desc(AIReport.created_at))
             .all()
         )
@@ -798,8 +812,8 @@ class TeacherService:
             "reports": [
                 {
                     "id":           r.id,
-                    "title":        f"{r.term or 'Term 2'} Week {r.week_number or '?'} AI Report",
-                    "class_name":   cls.name if cls else "",
+                    "title":        f"{student_map.get(r.student_id, {}).name or 'Unknown Student'} - {r.term or 'Term 2'} Week {r.week_number or '?'} AI Report",
+                    "class_name":   getattr(class_map.get(student_class_map.get(r.student_id, -1)), "name", ""),
                     "term":         r.term or "Term 2",
                     "week_number":  r.week_number,
                     "status":       "sent" if r.sent_to_parent else ("ready" if r.teacher_approved else "draft"),

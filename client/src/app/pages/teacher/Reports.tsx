@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileText, Download, Eye, Calendar, CheckCircle, Clock } from "lucide-react";
+import { FileText, Download, Eye, Calendar, CheckCircle, Clock, ChevronDown } from "lucide-react";
 import { api } from "../../lib/api";
 import { DEMO_TEACHER_ID } from "../../lib/config";
 
@@ -9,19 +9,38 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
   draft: { label: "Draft", color: "#F59E0B", bg: "#FEF3C7", icon: <Clock size={12} /> },
 };
 
+interface ClassItem {
+  id: number;
+  name: string;
+}
+
 export function Reports() {
   const [generating, setGenerating] = useState(false);
   const [data, setData] = useState<any>(null);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
 
+  // Fetch classes once on mount, set default selection
   useEffect(() => {
-    api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}`).then(setData);
+    api.get<any[]>(`/teacher/classes?teacher_id=${DEMO_TEACHER_ID}`).then((rows) => {
+      const mapped = rows.map((c: any) => ({ id: c.id, name: c.name }));
+      setClasses(mapped);
+      if (mapped.length > 0) setSelectedClassId(mapped[0].id);
+    });
   }, []);
 
+  // Fetch reports whenever selected class changes
+  useEffect(() => {
+    if (selectedClassId === null) return;
+    api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}&class_id=${selectedClassId}`).then(setData);
+  }, [selectedClassId]);
+
   const handleGenerate = () => {
+    if (!selectedClassId) return;
     setGenerating(true);
-    const q = `teacher_id=${DEMO_TEACHER_ID}&class_id=1&term=Term%202&week=8`;
+    const q = `teacher_id=${DEMO_TEACHER_ID}&class_id=${selectedClassId}&term=Term%202&week=8`;
     api.post(`/teacher/reports/generate?${q}`, {})
-      .then(() => api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}`).then(setData))
+      .then(() => api.get<any>(`/teacher/reports?teacher_id=${DEMO_TEACHER_ID}&class_id=${selectedClassId}`).then(setData))
       .finally(() => setGenerating(false));
   };
 
@@ -35,14 +54,31 @@ export function Reports() {
             <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>Reports</h1>
             <p className="mt-1 text-sm" style={{ color: "#64748B" }}>Generate, preview and send progress reports to parents</p>
           </div>
-          <button
-            onClick={handleGenerate}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all"
-            style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
-          >
-            <FileText size={15} />
-            {generating ? "Generating..." : "Generate New Report"}
-          </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Class dropdown */}
+            <div className="relative">
+              <select
+                value={selectedClassId ?? ""}
+                onChange={(e) => setSelectedClassId(Number(e.target.value))}
+                className="appearance-none pl-4 pr-9 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer"
+                style={{ color: "#1E293B", fontWeight: 500, minWidth: "180px" }}
+              >
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#64748B" }} />
+            </div>
+            <button
+              onClick={handleGenerate}
+              disabled={!selectedClassId || generating}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm hover:opacity-90 transition-all disabled:opacity-50"
+              style={{ backgroundColor: "#2563EB", fontWeight: 600 }}
+            >
+              <FileText size={15} />
+              {generating ? "Generating..." : "Generate New Report"}
+            </button>
+          </div>
         </div>
 
         {generating && (

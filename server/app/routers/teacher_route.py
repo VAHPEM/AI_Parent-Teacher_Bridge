@@ -174,8 +174,8 @@ def schedule_call(question_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/reports")
-def get_reports(teacher_id: int = Query(...), db: Session = Depends(get_db)):
-    data = TeacherService.get_reports(db, teacher_id)
+def get_reports(teacher_id: int = Query(...), class_id: int = Query(None), db: Session = Depends(get_db)):
+    data = TeacherService.get_reports(db, teacher_id, class_id=class_id)
     return ApiResponse(body=data, message="success")
 
 
