@@ -98,7 +98,7 @@ def get_ai_analysis(teacher_id: int = Query(...), confidence: str = Query(None),
 
 @router.put("/activities/{activity_id}")
 def update_activity(activity_id: int, payload: ActivityUpdatePayload, db: Session = Depends(get_db)):
-    data = TeacherService.update_activity(db, activity_id, payload.title, payload.description, payload.steps)
+    data = TeacherService.update_activity(db, activity_id, payload.title, payload.description, payload.steps, payload.curriculum_ref)
     return ApiResponse(body=data, message="success")
 
 

@@ -116,6 +116,7 @@ class ActivityUpdatePayload(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     steps: Optional[list[str]] = None
+    curriculum_ref: Optional[str] = None
 
 
 class RespondCreate(BaseModel):

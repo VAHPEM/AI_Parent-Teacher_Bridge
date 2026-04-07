@@ -255,10 +255,24 @@ export function ParentActivities() {
                         </div>
                       )}
                     </div>
-                    <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: "#94A3B8" }}>
-                      <Sparkles size={11} style={{ color: sc.color }} />
-                      <span>{t("curriculum_ref", { ref: activity.curriculumRef })}</span>
-                    </div>
+                    {activity.curriculumRef && (
+                      <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: "#94A3B8" }}>
+                        <Sparkles size={11} style={{ color: sc.color }} />
+                        {activity.curriculumRef.startsWith("http") ? (
+                          <a
+                            href={activity.curriculumRef}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                            style={{ color: sc.color }}
+                          >
+                            {t("curriculum_ref", { ref: activity.curriculumRef })}
+                          </a>
+                        ) : (
+                          <span>{t("curriculum_ref", { ref: activity.curriculumRef })}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

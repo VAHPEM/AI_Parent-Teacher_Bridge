@@ -26,6 +26,7 @@ export function ActivityEditForm({ activity, onSave, onCancel }: Props) {
   const [steps, setSteps] = useState<string[]>(
     activity.steps.length > 0 ? [...activity.steps] : [""]
   );
+  const [curriculumRef, setCurriculumRef] = useState(activity.curriculumRef);
   const [saving, setSaving] = useState(false);
 
   const updateStep = (i: number, value: string) => {
@@ -48,6 +49,7 @@ export function ActivityEditForm({ activity, onSave, onCancel }: Props) {
         title: title.trim() || null,
         description: description.trim() || null,
         steps: steps.filter(s => s.trim()),
+        curriculum_ref: curriculumRef.trim() || null,
       });
       onSave(updated);
     } finally {
@@ -111,6 +113,21 @@ export function ActivityEditForm({ activity, onSave, onCancel }: Props) {
         >
           <Plus size={12} /> Add step
         </button>
+      </div>
+
+      {/* Curriculum Ref */}
+      <div>
+        <label className="block text-xs mb-1" style={{ fontWeight: 600, color: "#374151" }}>
+          Curriculum Reference{" "}
+          <span style={{ color: "#94A3B8", fontWeight: 400 }}>(URL or code)</span>
+        </label>
+        <input
+          value={curriculumRef}
+          onChange={e => setCurriculumRef(e.target.value)}
+          className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+          style={{ color: "#1E293B" }}
+          placeholder="e.g. https://australiancurriculum.edu.au/... or ACMNA123"
+        />
       </div>
 
       {/* Actions */}
