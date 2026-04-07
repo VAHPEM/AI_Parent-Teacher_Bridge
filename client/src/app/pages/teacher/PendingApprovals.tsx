@@ -27,7 +27,7 @@ export function PendingApprovals() {
   const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
 
   useEffect(() => {
-    api.get<any[]>(`/teacher/ai-analysis?teacher_id=${DEMO_TEACHER_ID}&confidence=low`).then((data) => {
+    api.get<any[]>(`/teacher/ai-analysis?teacher_id=${DEMO_TEACHER_ID}`).then((data) => {
       setItems(data.filter((a) => a.status === "pending"));
     });
   }, []);
@@ -80,7 +80,7 @@ export function PendingApprovals() {
           <div>
             <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>Needs Your Review</h1>
             <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
-              AI responses with <strong>low confidence</strong> — review and approve before sending to parents
+              All AI-generated reports — review and approve before sending to parents
             </p>
           </div>
           {items.length > 0 && (
@@ -95,9 +95,8 @@ export function PendingApprovals() {
         <div className="mb-6 p-4 rounded-2xl flex items-start gap-3" style={{ backgroundColor: "#FEF3C7", border: "1px solid #FDE68A" }}>
           <Info size={16} className="shrink-0 mt-0.5" style={{ color: "#D97706" }} />
           <p className="text-sm" style={{ color: "#92400E", lineHeight: "1.6" }}>
-            These responses have <strong>low confidence</strong> — the AI didn't have enough data to make an accurate recommendation.
-            You need to manually approve before they're sent to parents.
-            High &amp; medium confidence responses are auto-approved — view them in <strong>AI Analysis Results</strong>.
+            All AI-generated reports require your review before they're sent to parents.
+            Check the summary, recommendations and activities, then approve or request a revision.
           </p>
         </div>
 

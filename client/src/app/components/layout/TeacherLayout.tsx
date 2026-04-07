@@ -45,7 +45,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
     // Fetch live badge counts
     Promise.all([
-      api.get<any[]>(`/teacher/ai-analysis?teacher_id=${DEMO_TEACHER_ID}&confidence=low`),
+      api.get<any[]>(`/teacher/ai-analysis?teacher_id=${DEMO_TEACHER_ID}`),
       api.get<any[]>(`/teacher/flagged-questions?teacher_id=${DEMO_TEACHER_ID}`),
     ]).then(([analyses, questions]) => {
       setBadges({
