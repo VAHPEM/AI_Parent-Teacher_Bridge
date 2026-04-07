@@ -16,13 +16,13 @@ interface NavItem {
   badge?: number;
 }
 
-const navItems: NavItem[] = [
+const baseNavItems = [
   { label: "Dashboard", icon: <LayoutDashboard size={18} />, path: "/teacher" },
   { label: "My Classes", icon: <BookOpen size={18} />, path: "/teacher/classes" },
   { label: "Enter Grades & Comments", icon: <ClipboardList size={18} />, path: "/teacher/grades" },
   { label: "AI Analysis Results", icon: <BrainCircuit size={18} />, path: "/teacher/ai-analysis" },
-  { label: "Needs Your Review", icon: <Clock size={18} />, path: "/teacher/pending", badge: 1 },
-  { label: "Parent Questions", icon: <MessageCircleQuestion size={18} />, path: "/teacher/flagged", badge: 3 },
+  { label: "Needs Your Review", icon: <Clock size={18} />, path: "/teacher/pending", badgeKey: "pending" },
+  { label: "Parent Questions", icon: <MessageCircleQuestion size={18} />, path: "/teacher/flagged", badgeKey: "flagged" },
   { label: "Reports", icon: <FileText size={18} />, path: "/teacher/reports" },
   { label: "Canvas Sync", icon: <RefreshCcw size={18} />, path: "/teacher/canvas" },
   { label: "Settings", icon: <Settings size={18} />, path: "/teacher/settings" },
@@ -37,10 +37,22 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [teacher, setTeacher] = useState({ name: "Teacher", initials: "T" });
+  const [badges, setBadges] = useState<Record<string, number>>({ pending: 0, flagged: 0 });
 
   useEffect(() => {
     api.get<{ name: string; initials: string }>(`/teacher/me?teacher_id=${DEMO_TEACHER_ID}`)
       .then(data => setTeacher(data));
+
+    // Fetch live badge counts
+    Promise.all([
+      api.get<any[]>(`/teacher/ai-analysis?teacher_id=${DEMO_TEACHER_ID}`),
+      api.get<any[]>(`/teacher/flagged-questions?teacher_id=${DEMO_TEACHER_ID}`),
+    ]).then(([analyses, questions]) => {
+      setBadges({
+        pending: analyses.filter((a: any) => a.status === "pending").length,
+        flagged: questions.filter((q: any) => q.status === "open").length,
+      });
+    }).catch(() => {});
   }, []);
 
   const isActive = (path: string) => {
@@ -91,28 +103,31 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-150 group"
-              style={{
-                backgroundColor: isActive(item.path) ? "#EFF6FF" : "transparent",
-                color: isActive(item.path) ? "#2563EB" : "#64748B",
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <span style={{ color: isActive(item.path) ? "#2563EB" : "#94A3B8" }}>{item.icon}</span>
-                <span className="text-sm" style={{ fontWeight: isActive(item.path) ? 600 : 400 }}>{item.label}</span>
-              </div>
-              {item.badge && (
-                <span className="text-xs px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: "#EF4444", fontWeight: 600 }}>
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          ))}
+          {baseNavItems.map((item) => {
+            const badgeCount = item.badgeKey ? badges[item.badgeKey] : 0;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-150 group"
+                style={{
+                  backgroundColor: isActive(item.path) ? "#EFF6FF" : "transparent",
+                  color: isActive(item.path) ? "#2563EB" : "#64748B",
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <span style={{ color: isActive(item.path) ? "#2563EB" : "#94A3B8" }}>{item.icon}</span>
+                  <span className="text-sm" style={{ fontWeight: isActive(item.path) ? 600 : 400 }}>{item.label}</span>
+                </div>
+                {badgeCount > 0 && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: "#EF4444", fontWeight: 600 }}>
+                    {badgeCount}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Bottom */}

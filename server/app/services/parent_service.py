@@ -658,3 +658,45 @@ class ParentService:
         db.refresh(msg)
         return {"id": msg.id, "role": msg.role, "content": msg.content, "created_at": str(msg.created_at)}
 
+    # ── AI Chat Sessions v2 (parent-level, not per-student) ───────────
+    @staticmethod
+    def get_chat_sessions_v2(db: Session, parent_id: int) -> list:
+        sessions = (
+            db.query(ChatSession)
+            .filter(ChatSession.parent_id == parent_id)
+            .order_by(desc(ChatSession.created_at))
+            .all()
+        )
+        return [
+            {"id": s.id, "title": s.title or "New Chat", "language": s.language, "created_at": str(s.created_at)}
+            for s in sessions
+        ]
+
+    @staticmethod
+    def create_chat_session_v2(db: Session, parent_id: int, language: str) -> dict:
+        session = ChatSession(student_id=None, parent_id=parent_id, language=language)
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return {"id": session.id, "title": session.title or "New Chat", "language": session.language, "created_at": str(session.created_at)}
+
+    @staticmethod
+    def assert_chat_session_v2(db: Session, session_id: int, parent_id: int) -> ChatSession:
+        session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if not session:
+            raise AppException("Chat session not found", 404)
+        if session.parent_id != parent_id:
+            raise AppException("Not allowed to use this chat session", 403)
+        return session
+
+    @staticmethod
+    def get_session_messages_v2(db: Session, session_id: int, parent_id: int) -> list:
+        ParentService.assert_chat_session_v2(db, session_id, parent_id)
+        msgs = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at)
+            .all()
+        )
+        return [{"id": m.id, "role": m.role, "content": m.content, "created_at": str(m.created_at)} for m in msgs]
+

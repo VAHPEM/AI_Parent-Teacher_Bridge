@@ -6,13 +6,6 @@ import { api } from "../../lib/api";
 import { DEMO_PARENT_ID } from "../../lib/config";
 import i18n from "i18next";
 
-const suggestedQuestions = [
-  "How is Noah going in Maths?",
-  "What home activities should I do with Noah?",
-  "How is his English going?",
-  "How is his Science going?",
-];
-
 interface Message {
   id: number;
   role: "parent" | "ai";
@@ -49,9 +42,8 @@ function groupSessions(sessions: Session[]): { label: string; items: Session[] }
 }
 
 export function ParentAIChat() {
-  const { activeChild: student } = useParentChild();
+  const { children, parent } = useParentChild();
   const { t } = useTranslation("ai-chat");
-  const { t: tCommon } = useTranslation("common");
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
@@ -60,25 +52,23 @@ export function ParentAIChat() {
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load sessions on mount — never auto-create
+  // Load sessions on mount
   useEffect(() => {
-    if (!student) return;
-    api.get<Session[]>(`/parent/chat/sessions/${student.id}?parent_id=${DEMO_PARENT_ID}`)
+    api.get<Session[]>(`/parent/chat/v2/sessions?parent_id=${DEMO_PARENT_ID}`)
       .then(data => {
         setSessions(data);
         if (data.length > 0) loadSession(data[0].id);
       })
       .catch(() => {});
-  }, [student?.id]);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
   const loadSession = (sessionId: number) => {
-    if (!student) return;
     setActiveSessionId(sessionId);
-    api.get<Message[]>(`/parent/chat/sessions/${student.id}/messages?session_id=${sessionId}&parent_id=${DEMO_PARENT_ID}`)
+    api.get<Message[]>(`/parent/chat/v2/sessions/messages?session_id=${sessionId}&parent_id=${DEMO_PARENT_ID}`)
       .then(data => setMessages(data))
       .catch(() => setMessages([]));
   };
@@ -97,13 +87,11 @@ export function ParentAIChat() {
   };
 
   const createNewSession = () => {
-    if (!student) return;
-    // If current session is empty, just clear messages and keep it (no new session needed)
     if (activeSessionId !== null && messages.length === 0) {
       setInput("");
       return;
     }
-    api.post<Session>(`/parent/chat/sessions/${student.id}?parent_id=${DEMO_PARENT_ID}&language=${i18n.language}`, {})
+    api.post<Session>(`/parent/chat/v2/sessions?parent_id=${DEMO_PARENT_ID}&language=${i18n.language}`, {})
       .then(session => {
         setSessions(prev => [session, ...prev]);
         setActiveSessionId(session.id);
@@ -115,7 +103,7 @@ export function ParentAIChat() {
 
   const ensureSession = (): Promise<number> => {
     if (activeSessionId !== null) return Promise.resolve(activeSessionId);
-    return api.post<Session>(`/parent/chat/sessions/${student!.id}?parent_id=${DEMO_PARENT_ID}&language=${i18n.language}`, {})
+    return api.post<Session>(`/parent/chat/v2/sessions?parent_id=${DEMO_PARENT_ID}&language=${i18n.language}`, {})
       .then(session => {
         setSessions(prev => [session, ...prev]);
         setActiveSessionId(session.id);
@@ -125,7 +113,7 @@ export function ParentAIChat() {
 
   const handleSend = (text?: string) => {
     const question = text || input;
-    if (!question.trim() || !student) return;
+    if (!question.trim()) return;
 
     const optimistic: Message = { id: Date.now(), role: "parent", content: question, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, optimistic]);
@@ -133,12 +121,11 @@ export function ParentAIChat() {
     setTyping(true);
 
     ensureSession().then(sessionId => {
-      // Update sidebar title optimistically if this is the first message
       setSessions(prev => prev.map(s =>
         s.id === sessionId && s.title === "New Chat" ? { ...s, title: question.slice(0, 60) } : s
       ));
 
-      api.post<{ reply: string; session_id?: number }>(`/parent/chat/${student.id}?parent_id=${DEMO_PARENT_ID}`, { message: question, session_id: sessionId })
+      api.post<{ reply: string; session_id?: number }>(`/parent/chat/v2?parent_id=${DEMO_PARENT_ID}`, { message: question, session_id: sessionId })
         .then(res => {
           if (typeof res.session_id === "number") setActiveSessionId(res.session_id);
           setMessages(prev => [...prev, { id: Date.now() + 1, role: "ai", content: res.reply, created_at: new Date().toISOString() }]);
@@ -150,9 +137,29 @@ export function ParentAIChat() {
     }).catch(() => setTyping(false));
   };
 
-  if (!student) return null;
+  // Build suggested questions from children names
+  const childNames = children.map(c => c.firstName);
+  const firstName = childNames[0] ?? "your child";
+  const suggestedQuestions = childNames.length > 1
+    ? [
+        `How is ${childNames[0]} going in Maths?`,
+        `What home activities should I do with ${childNames[0]}?`,
+        `How is ${childNames[1]} going in English?`,
+        `Compare the progress of ${childNames.join(" and ")}`,
+      ]
+    : [
+        `How is ${firstName} going in Maths?`,
+        `What home activities should I do with ${firstName}?`,
+        `How is ${firstName}'s English going?`,
+        `How is ${firstName}'s Science going?`,
+      ];
 
   const sessionGroups = groupSessions(sessions);
+
+  // Children tag string for banner
+  const childrenTagStr = childNames.length > 0
+    ? childNames.map(n => `<strong>${n}</strong>`).join(", ")
+    : "your children";
 
   return (
     <div className="flex" style={{ height: "calc(100vh - 57px)" }}>
@@ -224,8 +231,11 @@ export function ParentAIChat() {
         {/* Info banner */}
         <div className="mx-6 mt-4 p-3 rounded-xl flex items-start gap-2 shrink-0" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
           <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
-          <p className="text-xs" style={{ color: "#1E40AF", lineHeight: "1.6" }}
-            dangerouslySetInnerHTML={{ __html: t("info_banner", { firstName: student.firstName, pronoun: student.firstName === "Ella" ? "her" : "his" }) }} />
+          <p className="text-xs" style={{ color: "#1E40AF", lineHeight: "1.6" }}>
+            Ask me anything about{" "}
+            <span dangerouslySetInnerHTML={{ __html: childrenTagStr }} />
+            {" "}— their progress, activities, or learning tips.
+          </p>
         </div>
 
         {/* Suggested questions — only when no messages */}
@@ -233,7 +243,7 @@ export function ParentAIChat() {
           <div className="px-6 pt-4 shrink-0">
             <p className="text-xs mb-2 font-medium" style={{ color: "#94A3B8", letterSpacing: "0.05em" }}>{t("suggested_label")}</p>
             <div className="flex flex-wrap gap-2">
-              {(t("suggested_questions", { returnObjects: true, firstName: student.firstName, pronoun: student.firstName === "Ella" ? "her" : "his" }) as string[]).map(q => (
+              {suggestedQuestions.map(q => (
                 <button
                   key={q}
                   onClick={() => handleSend(q)}
@@ -278,8 +288,9 @@ export function ParentAIChat() {
                 </div>
               </div>
               {msg.role === "parent" && (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-1" style={{ backgroundColor: "#10B981", fontWeight: 700 }}>
-                  {student.initials}
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0 mt-1"
+                  style={{ backgroundColor: parent?.color || "#10B981", fontWeight: 700 }}>
+                  {parent?.initials || "P"}
                 </div>
               )}
             </div>
@@ -312,14 +323,14 @@ export function ParentAIChat() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSend()}
-                placeholder={t("input_placeholder", { firstName: student.firstName })}
+                placeholder={`Ask about ${childNames.join(", ")} or their learning...`}
                 className="flex-1 text-sm bg-transparent focus:outline-none"
                 style={{ color: "#1E293B" }}
               />
             </div>
             <button
               onClick={() => handleSend()}
-              disabled={!input.trim() || typing || !activeSessionId}
+              disabled={!input.trim() || typing}
               className="w-11 h-11 rounded-xl flex items-center justify-center text-white hover:opacity-90 transition-all disabled:opacity-40"
               style={{ backgroundColor: "#2563EB" }}
             >

@@ -302,12 +302,8 @@ def persist_ai_report_bundle(
     normalized = validate_and_normalize_report(inner_report, payload)
     risk = normalized["risk_level"]
 
-    if risk == "high":
-        status = "pending"
-        teacher_ok = False
-    else:
-        status = "auto_approved"
-        teacher_ok = True
+    status = "pending"
+    teacher_ok = False
 
     recs = normalized["recommendations"]
     row = AIReport(

@@ -12,13 +12,13 @@ type FilterType = "all" | "auto_approved" | "needs_review" | "needs_revision";
 
 const filterTabs: { key: FilterType; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "auto_approved", label: "Auto-Approved" },
+  { key: "auto_approved", label: "Approved" },
   { key: "needs_review", label: "Needs Review" },
   { key: "needs_revision", label: "Needs Revision" },
 ];
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  auto_approved: { label: "Auto-Approved", color: "#10B981", bg: "#F0FDF4", border: "#86EFAC" },
+  auto_approved: { label: "Approved",      color: "#10B981", bg: "#F0FDF4", border: "#86EFAC" },
   approved:      { label: "Approved",      color: "#10B981", bg: "#F0FDF4", border: "#86EFAC" },
   published:     { label: "Published",     color: "#10B981", bg: "#F0FDF4", border: "#86EFAC" },
   pending:       { label: "Needs Review",  color: "#F59E0B", bg: "#FFFBEB", border: "#FDE68A" },
@@ -62,7 +62,7 @@ export function AIAnalysis() {
 
   const handleApprove = (id: number) => {
     api.put(`/teacher/ai-analysis/${id}/approve`).then(() => {
-      setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "auto_approved" } : a));
+      setAnalyses(prev => prev.map(a => a.id === id ? { ...a, status: "approved" } : a));
     });
   };
 
@@ -113,14 +113,14 @@ export function AIAnalysis() {
           <div>
             <h1 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#1E293B" }}>AI Analysis Results</h1>
             <p className="mt-1 text-sm" style={{ color: "#64748B" }}>
-              High &amp; medium confidence insights are <strong>auto-approved</strong> · Low confidence items require your review before sending to parents
+              All AI-generated reports require your review · Approve before sending to parents
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ backgroundColor: "#F0FDF4", border: "1px solid #86EFAC" }}>
               <Zap size={14} style={{ color: "#10B981" }} />
               <span className="text-sm" style={{ color: "#065F46", fontWeight: 500 }}>
-                {counts.auto_approved} auto-approved
+                {counts.auto_approved} approved
               </span>
             </div>
             {counts.needs_review > 0 && (
@@ -138,7 +138,7 @@ export function AIAnalysis() {
         <div className="mb-6 p-4 rounded-2xl flex items-start gap-3" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
           <Sparkles size={16} className="shrink-0 mt-0.5" style={{ color: "#2563EB" }} />
           <p className="text-sm" style={{ color: "#1E40AF", lineHeight: "1.6" }}>
-            <strong>Auto-approval flow:</strong> AI responses with <strong>high or medium confidence</strong> are automatically sent to parents without manual review. You can still request revision if needed. Only <strong>low confidence</strong> responses require your approval first.
+            <strong>Manual approval required:</strong> All AI-generated reports must be reviewed and approved by you before they are sent to parents. You can edit the content or request a revision if needed.
           </p>
         </div>
 

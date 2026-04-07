@@ -64,10 +64,7 @@ def report_usable_for_parent_chat(report: AIReport) -> bool:
     st = (report.status or "").lower()
     if st == "needs_revision":
         return False
-    conf = confidence_from_risk(report.risk_level)
-    if conf == "low":
-        return bool(report.teacher_approved)
-    return True
+    return bool(report.teacher_approved)
 
 
 def _latest_usable_report(db: Session, student_id: int) -> tuple[AIReport | None, AIReport | None]:
