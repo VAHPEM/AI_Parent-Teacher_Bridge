@@ -594,6 +594,7 @@ class TeacherService:
         title: str | None,
         description: str | None,
         steps: list[str] | None,
+        curriculum_ref: str | None,
     ) -> dict:
         activity = db.query(Activity).filter(Activity.id == activity_id).first()
         if not activity:
@@ -604,6 +605,8 @@ class TeacherService:
             activity.description = description
         if steps is not None:
             activity.steps = steps
+        if curriculum_ref is not None:
+            activity.curriculum_ref = curriculum_ref
         db.commit()
         return {
             "id":          activity.id,
