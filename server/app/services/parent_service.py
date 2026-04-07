@@ -16,6 +16,7 @@ from app.models.question_reply import QuestionReply
 from app.exceptions.app_exception import AppException
 from app.services.translation_service import TranslationService
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -298,6 +299,7 @@ class ParentService:
                 "strengths":      strengths[:2],
                 "aiRecs":         ai_recs[:4],
                 "classAverage":   65.0,
+                "color":          _color(random.randint(1, len(COLORS))),
             })
 
         all_records = (
