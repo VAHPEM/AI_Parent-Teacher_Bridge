@@ -6,6 +6,7 @@ from app.services.parent_service import ParentService
 from app.services.parent_chat_service import parent_chat
 from app.schemas.parent import MessageCreate, ChatRequest, QuestionCreate, FollowUpCreate, SettingsUpdate
 from app.services.translation_service import TranslationService
+from app.exceptions.app_exception import AppException
 
 router = APIRouter(prefix="/parent", tags=["Parent"])
 
@@ -60,6 +61,55 @@ def get_messages(student_id: int, parent_id: int = Query(...), db: Session = Dep
 def send_message(student_id: int, payload: MessageCreate, parent_id: int = Query(...), db: Session = Depends(get_db)):
     data = ParentService.send_message(db, student_id, payload.teacherId, payload.text, parent_id)
     return ApiResponse(body=data, message="success")
+
+
+@router.get("/chat/v2/sessions")
+def get_chat_sessions_v2(parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_chat_sessions_v2(db, parent_id)
+    return ApiResponse(body=data, message="success")
+
+
+@router.post("/chat/v2/sessions")
+def create_chat_session_v2(parent_id: int = Query(...), language: str = Query("en"), db: Session = Depends(get_db)):
+    data = ParentService.create_chat_session_v2(db, parent_id, language)
+    return ApiResponse(body=data, message="success")
+
+
+@router.get("/chat/v2/sessions/messages")
+def get_session_messages_v2(session_id: int = Query(...), parent_id: int = Query(...), db: Session = Depends(get_db)):
+    data = ParentService.get_session_messages_v2(db, session_id, parent_id)
+    return ApiResponse(body=data, message="success")
+
+
+@router.post("/chat/v2")
+def parent_chat_v2(
+    payload: ChatRequest,
+    parent_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    from app.models.student import Student as StudentModel
+    pref_lang = ParentService._get_parent_language(db, parent_id) or "en"
+
+    # Pick first child as the "primary" context anchor
+    first_child = db.query(StudentModel).filter(StudentModel.parent_id == parent_id).first()
+    if not first_child:
+        raise AppException("No children found for this parent", 404)
+
+    if payload.session_id is None:
+        created = ParentService.create_chat_session_v2(db, parent_id, pref_lang)
+        session_id = int(created["id"])
+    else:
+        session_id = payload.session_id
+        ParentService.assert_chat_session_v2(db, session_id, parent_id)
+
+    ParentService.add_chat_message(db, session_id, "parent", payload.message)
+    data = parent_chat(db, first_child.id, parent_id, payload.message)
+    reply_en = str(data.get("reply") or "").strip()
+
+    reply_out = TranslationService.translate_from_english(reply_en, pref_lang) if pref_lang != "en" else reply_en
+
+    ParentService.add_chat_message(db, session_id, "ai", reply_out)
+    return ApiResponse(body={**data, "reply": reply_out, "session_id": session_id}, message="success")
 
 
 @router.get("/chat/sessions/{student_id}")
