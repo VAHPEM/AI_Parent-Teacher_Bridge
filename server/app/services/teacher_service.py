@@ -74,7 +74,7 @@ class TeacherService:
         teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
         cls = db.query(Class).filter(Class.teacher_id == teacher_id).first()
 
-        total_students = db.query(Student).count()
+        total_students = db.query(Student).filter(Student.class_id == cls.id).count()
         pending_reviews = db.query(AIReport).filter(AIReport.status.in_(["pending", "draft"])).count()
         flagged = db.query(ParentQuestion).filter(ParentQuestion.status == "open").count()
 
