@@ -47,6 +47,18 @@ UPCOMING_EVENTS = [
     {"title": "Term 2 Reports Released",   "date": "April 22, 2026", "type": "report"},
 ]
 
+import random
+
+def random_color(current_colors=None):
+    colors = [
+        "#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F",
+        "#EDC948", "#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC"
+    ]
+
+    current_colors = current_colors or []
+    available_colors = [c for c in colors if c not in current_colors]
+
+    return random.choice(available_colors) if available_colors else None
 
 def _color(id: int) -> str:
     return COLORS[id % len(COLORS)]
@@ -265,6 +277,7 @@ class ParentService:
         curriculum_ref = report.curriculum_ref if report else ""
 
         subjects = []
+        current_color = []
         for r in records:
             score = float(r.score or 0)
             grade = _grade_from_score(r.score)
@@ -285,6 +298,8 @@ class ParentService:
                 .first()
             )
             teacher_comment = obs.teacher_comment if obs else r.teacher_comment or ""
+            color = random_color(current_color)
+            current_color.append(color)
             subjects.append({
                 "name":           r.subject,
                 "grade":          grade,
@@ -299,7 +314,7 @@ class ParentService:
                 "strengths":      strengths[:2],
                 "aiRecs":         ai_recs[:4],
                 "classAverage":   65.0,
-                "color":          _color(random.randint(1, len(COLORS))),
+                "color":          color,
             })
 
         all_records = (
