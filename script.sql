@@ -2,7 +2,6 @@
 -- DROP TABLES
 -- =========================================================
 DROP TABLE IF EXISTS translation_cache CASCADE;
-DROP TABLE IF EXISTS parent_feedback CASCADE;
 DROP TABLE IF EXISTS chat_messages CASCADE;
 DROP TABLE IF EXISTS chat_sessions CASCADE;
 DROP TABLE IF EXISTS question_replies CASCADE;
@@ -270,22 +269,6 @@ CREATE TABLE chat_messages (
 );
 
 
--- =========================================================
--- PARENT_FEEDBACK
--- teammate AI-module table
--- =========================================================
-CREATE TABLE parent_feedback (
-    id SERIAL PRIMARY KEY,
-    report_id INT REFERENCES ai_reports(id) ON DELETE CASCADE,
-    parent_id INT REFERENCES parents(id) ON DELETE CASCADE,
-    feedback_text TEXT,
-    status VARCHAR(30),
-    needs_teacher_followup BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- =========================================================
 -- CANVAS_SYNC_LOGS
 -- =========================================================
 CREATE TABLE canvas_sync_logs (
@@ -326,9 +309,6 @@ CREATE INDEX idx_question_replies_question_id ON question_replies(question_id);
 CREATE INDEX idx_chat_sessions_student_id ON chat_sessions(student_id);
 CREATE INDEX idx_chat_sessions_parent_id ON chat_sessions(parent_id);
 CREATE INDEX idx_chat_messages_session_id ON chat_messages(session_id);
-
-CREATE INDEX idx_parent_feedback_report_id ON parent_feedback(report_id);
-CREATE INDEX idx_parent_feedback_parent_id ON parent_feedback(parent_id);
 
 -- =========================================================
 -- TEACHERS

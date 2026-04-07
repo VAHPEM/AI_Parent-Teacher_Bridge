@@ -15,5 +15,4 @@ from app.models.message import ChatMessage
 from app.models.parent_question import ParentQuestion
 from app.models.question_reply import QuestionReply
 from app.models.canvas_sync_log import CanvasSyncLog
-from app.models.parent_feedback import ParentFeedback
 from app.models.translation_cache import TranslationCache
