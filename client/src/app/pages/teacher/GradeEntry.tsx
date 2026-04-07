@@ -427,7 +427,7 @@ export function GradeEntry() {
               style={{ color: "#64748B", fontWeight: 500 }}
             >
               <Save size={15} />
-              {savedDraft ? "Draft Saved!" : "Save Draft"}
+              {savedDraft ? "Score Saved!" : "Save Score"}
             </button>
             <button
               onClick={handleSubmit}
