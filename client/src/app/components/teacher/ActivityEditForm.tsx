@@ -118,7 +118,7 @@ export function ActivityEditForm({ activity, onSave, onCancel }: Props) {
       {/* Curriculum Ref */}
       <div>
         <label className="block text-xs mb-1" style={{ fontWeight: 600, color: "#374151" }}>
-          Curriculum Reference{" "}
+          Support Reference{" "}
           <span style={{ color: "#94A3B8", fontWeight: 400 }}>(URL or code)</span>
         </label>
         <input
