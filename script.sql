@@ -2,6 +2,7 @@
 -- DROP TABLES
 -- =========================================================
 DROP TABLE IF EXISTS translation_cache CASCADE;
+DROP TABLE IF EXISTS parent_feedback CASCADE;
 DROP TABLE IF EXISTS chat_messages CASCADE;
 DROP TABLE IF EXISTS chat_sessions CASCADE;
 DROP TABLE IF EXISTS question_replies CASCADE;
@@ -269,6 +270,22 @@ CREATE TABLE chat_messages (
 );
 
 
+-- =========================================================
+-- PARENT_FEEDBACK
+-- teammate AI-module table
+-- =========================================================
+CREATE TABLE parent_feedback (
+    id SERIAL PRIMARY KEY,
+    report_id INT REFERENCES ai_reports(id) ON DELETE CASCADE,
+    parent_id INT REFERENCES parents(id) ON DELETE CASCADE,
+    feedback_text TEXT,
+    status VARCHAR(30),
+    needs_teacher_followup BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- =========================================================
 -- CANVAS_SYNC_LOGS
 -- =========================================================
 CREATE TABLE canvas_sync_logs (
@@ -310,192 +327,8 @@ CREATE INDEX idx_chat_sessions_student_id ON chat_sessions(student_id);
 CREATE INDEX idx_chat_sessions_parent_id ON chat_sessions(parent_id);
 CREATE INDEX idx_chat_messages_session_id ON chat_messages(session_id);
 
--- =========================================================
--- TEACHERS
--- =========================================================
-INSERT INTO teachers (name, email)
-VALUES
-    ('Emma Wilson', 'emma.wilson@school.edu.au'),
-    ('James Carter', 'james.carter@school.edu.au'),
-    ('Sophia Nguyen', 'sophia.nguyen@school.edu.au');
-
-
--- =========================================================
--- CLASSES
--- safer version using teacher email lookup
--- =========================================================
-INSERT INTO classes (name, grade_level, teacher_id)
-VALUES
-    ('5A', 'Year 5', (SELECT id FROM teachers WHERE email = 'emma.wilson@school.edu.au')),
-    ('5B', 'Year 5', (SELECT id FROM teachers WHERE email = 'james.carter@school.edu.au')),
-    ('6A', 'Year 6', (SELECT id FROM teachers WHERE email = 'sophia.nguyen@school.edu.au'));
-
--- =========================================================
--- PARENTS
--- 6 parents, each will have 3 children
--- =========================================================
-INSERT INTO parents (name, email, phone, preferred_language, prefers_voice)
-VALUES
-    ('Sarah Johnson', 'sarah.johnson@email.com', '0400000001', 'en', TRUE),
-    ('Michael Brown', 'michael.brown@email.com', '0400000002', 'en', FALSE),
-    ('Emily Davis', 'emily.davis@email.com', '0400000003', 'en', TRUE),
-    ('David Miller', 'david.miller@email.com', '0400000004', 'en', FALSE),
-    ('Olivia Taylor', 'olivia.taylor@email.com', '0400000005', 'en', TRUE),
-    ('Daniel Anderson', 'daniel.anderson@email.com', '0400000006', 'en', FALSE);
-
-
--- =========================================================
--- STUDENTS
--- 18 students total
--- 6 students in each class
--- each parent has 1 student in each class
--- =========================================================
-INSERT INTO students (student_code, name, class_id, class_name, grade_level, parent_id)
-VALUES
-    -- Parent 1 children
-    ('S001', 'Liam Johnson', 1, '5A', 'Year 5', 1),
-    ('S002', 'Ava Johnson', 2, '5B', 'Year 5', 1),
-    ('S003', 'Noah Johnson', 3, '6A', 'Year 6', 1),
-
-    -- Parent 2 children
-    ('S004', 'Olivia Brown', 1, '5A', 'Year 5', 2),
-    ('S005', 'Ethan Brown', 2, '5B', 'Year 5', 2),
-    ('S006', 'Sophia Brown', 3, '6A', 'Year 6', 2),
-
-    -- Parent 3 children
-    ('S007', 'Mason Davis', 1, '5A', 'Year 5', 3),
-    ('S008', 'Isabella Davis', 2, '5B', 'Year 5', 3),
-    ('S009', 'Lucas Davis', 3, '6A', 'Year 6', 3),
-
-    -- Parent 4 children
-    ('S010', 'Mia Miller', 1, '5A', 'Year 5', 4),
-    ('S011', 'James Miller', 2, '5B', 'Year 5', 4),
-    ('S012', 'Charlotte Miller', 3, '6A', 'Year 6', 4),
-
-    -- Parent 5 children
-    ('S013', 'Benjamin Taylor', 1, '5A', 'Year 5', 5),
-    ('S014', 'Amelia Taylor', 2, '5B', 'Year 5', 5),
-    ('S015', 'Henry Taylor', 3, '6A', 'Year 6', 5),
-
-    -- Parent 6 children
-    ('S016', 'Ella Anderson', 1, '5A', 'Year 5', 6),
-    ('S017', 'Jack Anderson', 2, '5B', 'Year 5', 6),
-    ('S018', 'Grace Anderson', 3, '6A', 'Year 6', 6);
-
--- =========================================================
--- SUBJECTS
--- =========================================================
-INSERT INTO subjects (subject_name)
-VALUES
-    ('Mathematics'),
-    ('English'),
-    ('Science'),
-    ('HASS'),
-    ('Health & PE')
-ON CONFLICT (subject_name) DO NOTHING;
-
-
--- =========================================================
--- CLASS_SUBJECTS
--- All classes: Mathematics, English, Science, HASS, Health & PE
--- =========================================================
-
--- 5A
-INSERT INTO class_subjects (class_id, subject_id)
-SELECT
-    c.id,
-    s.id
-FROM classes c
-JOIN subjects s ON s.subject_name IN ('Mathematics', 'English', 'Science', 'HASS', 'Health & PE')
-WHERE c.name = '5A'
-ON CONFLICT (class_id, subject_id) DO NOTHING;
-
--- 5B
-INSERT INTO class_subjects (class_id, subject_id)
-SELECT
-    c.id,
-    s.id
-FROM classes c
-JOIN subjects s ON s.subject_name IN ('Mathematics', 'English', 'Science', 'HASS', 'Health & PE')
-WHERE c.name = '5B'
-ON CONFLICT (class_id, subject_id) DO NOTHING;
-
--- 6A
-INSERT INTO class_subjects (class_id, subject_id)
-SELECT
-    c.id,
-    s.id
-FROM classes c
-JOIN subjects s ON s.subject_name IN ('Mathematics', 'English', 'Science', 'HASS', 'Health & PE')
-WHERE c.name = '6A'
-ON CONFLICT (class_id, subject_id) DO NOTHING;
-
--- Term 1 assessments (weeks 1, 3, 6, 9) — max_score 100
-INSERT INTO assessments (subject_id, assessment_name, assessment_type, term, week_number, due_date, max_score)
-SELECT id, 'Subject Knowledge Quiz',   'Quiz',       'Term 1', 1, DATE '2026-02-09', 100 FROM subjects
-UNION ALL
-SELECT id, 'Skills Practice Task',     'Worksheet',  'Term 1', 3, DATE '2026-02-23', 100 FROM subjects
-UNION ALL
-SELECT id, 'Applied Learning Project', 'Project',    'Term 1', 6, DATE '2026-03-16', 100 FROM subjects
-UNION ALL
-SELECT id, 'End of Term Assessment',   'Final Task', 'Term 1', 9, DATE '2026-04-06', 100 FROM subjects;
-
--- Term 2 assessments (weeks 6, 7, 8) — 2 per week, all max_score = 100
-INSERT INTO assessments (subject_id, assessment_name, assessment_type, term, week_number, due_date, max_score)
-SELECT s.id, a.name, a.atype, 'Term 2', a.wk, a.due, 100
-FROM subjects s
-CROSS JOIN (VALUES
-    ('English',     'Reading Comprehension Quiz', 'Quiz',      6, DATE '2026-05-11'),
-    ('English',     'Writing Task',               'Worksheet', 6, DATE '2026-05-13'),
-    ('English',     'Vocabulary Test',            'Quiz',      7, DATE '2026-05-18'),
-    ('English',     'Short Response Task',        'Worksheet', 7, DATE '2026-05-20'),
-    ('English',     'Mid-Term Assessment',        'Test',      8, DATE '2026-05-25'),
-    ('English',     'Project Presentation',       'Project',   8, DATE '2026-05-27'),
-
-    ('Mathematics', 'Number & Algebra Quiz',      'Quiz',      6, DATE '2026-05-11'),
-    ('Mathematics', 'Problem Solving Worksheet',  'Worksheet', 6, DATE '2026-05-13'),
-    ('Mathematics', 'Fractions Test',             'Quiz',      7, DATE '2026-05-18'),
-    ('Mathematics', 'Data & Statistics Task',     'Worksheet', 7, DATE '2026-05-20'),
-    ('Mathematics', 'Mid-Term Maths Test',        'Test',      8, DATE '2026-05-25'),
-    ('Mathematics', 'Geometry Project',           'Project',   8, DATE '2026-05-27'),
-
-    ('Science',     'Science Concepts Quiz',      'Quiz',      6, DATE '2026-05-11'),
-    ('Science',     'Lab Observation Report',     'Worksheet', 6, DATE '2026-05-13'),
-    ('Science',     'Inquiry Skills Test',        'Quiz',      7, DATE '2026-05-18'),
-    ('Science',     'Hypothesis Worksheet',       'Worksheet', 7, DATE '2026-05-20'),
-    ('Science',     'Mid-Term Science Test',      'Test',      8, DATE '2026-05-25'),
-    ('Science',     'Science Fair Project',       'Project',   8, DATE '2026-05-27'),
-
-    ('HASS',        'Geography Quiz',             'Quiz',      6, DATE '2026-05-11'),
-    ('HASS',        'History Research Task',      'Worksheet', 6, DATE '2026-05-13'),
-    ('HASS',        'Civics & Citizenship Test',  'Quiz',      7, DATE '2026-05-18'),
-    ('HASS',        'Economics Worksheet',        'Worksheet', 7, DATE '2026-05-20'),
-    ('HASS',        'Mid-Term HASS Assessment',   'Test',      8, DATE '2026-05-25'),
-    ('HASS',        'Community Project',          'Project',   8, DATE '2026-05-27'),
-
-    ('Health & PE', 'Fitness Skills Quiz',        'Quiz',      6, DATE '2026-05-11'),
-    ('Health & PE', 'Movement Assessment',        'Worksheet', 6, DATE '2026-05-13'),
-    ('Health & PE', 'Health & Wellbeing Test',    'Quiz',      7, DATE '2026-05-18'),
-    ('Health & PE', 'Sports Skills Worksheet',    'Worksheet', 7, DATE '2026-05-20'),
-    ('Health & PE', 'Mid-Term PE Assessment',     'Test',      8, DATE '2026-05-25'),
-    ('Health & PE', 'Team Sports Project',        'Project',   8, DATE '2026-05-27')
-) AS a(subj, name, atype, wk, due)
-WHERE s.subject_name = a.subj;
-
--- Score 0-100, grade auto-derived from score, comment left NULL for teacher to fill in
--- All scores/grades/comments are NULL — teacher fills in via Grade Entry page
-INSERT INTO assessment_scores (assessment_id, student_id, score, grade, comment)
-SELECT a.id, st.id, NULL, NULL, NULL
-FROM students st
-JOIN classes c         ON c.id = st.class_id
-JOIN class_subjects cs ON cs.class_id = c.id
-JOIN subjects s        ON s.id = cs.subject_id
-JOIN assessments a     ON a.subject_id = s.id;
-
--- weekly_records are populated automatically when teacher submits grades via Grade Entry page
-
--- weekly_observations are populated automatically when teacher submits grades via Grade Entry page
-
+CREATE INDEX idx_parent_feedback_report_id ON parent_feedback(report_id);
+CREATE INDEX idx_parent_feedback_parent_id ON parent_feedback(parent_id);
 
 -- =========================================================
 -- TRANSLATION CACHE
@@ -509,13 +342,94 @@ CREATE TABLE translation_cache (
 );
 CREATE INDEX idx_translation_cache_hash_lang ON translation_cache(payload_hash, language);
 
+-- =========================================================
+-- DEMO DATA
+-- 2 parents, each has 2 children
+-- 2 teachers, each teaches 1 child from each parent
+-- 5 subjects
+-- a few assessments per subject
+-- =========================================================
 
--- Delete everyone from 5A except Mia Miller and Benjamin Taylor
-DELETE FROM students
-WHERE class_id = (SELECT id FROM classes WHERE name = '5A')
-  AND name NOT IN ('Mia Miller', 'Benjamin Taylor');
+-- Teachers
+INSERT INTO teachers (name, email)
+VALUES
+    ('Emma Wilson', 'emma.wilson@school.edu.au'),
+    ('James Carter', 'james.carter@school.edu.au');
 
--- Delete everyone from 5B except Isabella Davis and James Miller
-DELETE FROM students
-WHERE class_id = (SELECT id FROM classes WHERE name = '5B')
-  AND name NOT IN ('Isabella Davis', 'James Miller');
+-- Classes
+INSERT INTO classes (name, grade_level, teacher_id)
+VALUES
+    ('5A', 'Year 5', 1),
+    ('5B', 'Year 5', 2);
+
+-- Parents
+INSERT INTO parents (name, email, phone, preferred_language, prefers_voice)
+VALUES
+    ('Sarah Johnson', 'sarah.johnson@email.com', '0400000001', 'en', TRUE),
+    ('Minh Nguyen', 'minh.nguyen@email.com', '0400000002', 'en', FALSE);
+
+-- Students
+INSERT INTO students (student_code, name, class_id, class_name, grade_level, parent_id)
+VALUES
+    ('S001', 'Liam Johnson', 1, '5A', 'Year 5', 1),
+    ('S002', 'Ava Johnson', 2, '5B', 'Year 5', 1),
+    ('S003', 'Ethan Nguyen', 1, '5A', 'Year 5', 2),
+    ('S004', 'Chloe Nguyen', 2, '5B', 'Year 5', 2);
+
+-- Subjects
+INSERT INTO subjects (subject_name)
+VALUES
+    ('Mathematics'),
+    ('English'),
+    ('Science'),
+    ('HASS'),
+    ('Health & PE');
+
+-- Both classes teach all 5 subjects
+INSERT INTO class_subjects (class_id, subject_id)
+SELECT c.id, s.id
+FROM classes c
+CROSS JOIN subjects s;
+
+-- Assessments: 2 assessments per subject for each of weeks 6, 7, 8
+INSERT INTO assessments (subject_id, assessment_name, assessment_type, term, week_number, due_date, max_score)
+SELECT s.id, a.name, a.assessment_type, a.term, a.week_number, a.due_date, 100
+FROM subjects s
+JOIN (
+    VALUES
+        ('English', 'Reading Comprehension Quiz', 'Quiz', 'Term 2', 6, DATE '2026-05-11'),
+        ('English', 'Writing Task', 'Assignment', 'Term 2', 6, DATE '2026-05-13'),
+        ('English', 'Vocabulary Test', 'Quiz', 'Term 2', 7, DATE '2026-05-18'),
+        ('English', 'Short Response Task', 'Worksheet', 'Term 2', 7, DATE '2026-05-20'),
+        ('English', 'Mid-Term English Assessment', 'Test', 'Term 2', 8, DATE '2026-05-25'),
+        ('English', 'Presentation Reflection', 'Project', 'Term 2', 8, DATE '2026-05-27'),
+
+        ('Mathematics', 'Number & Algebra Quiz', 'Quiz', 'Term 2', 6, DATE '2026-05-11'),
+        ('Mathematics', 'Problem Solving Worksheet', 'Worksheet', 'Term 2', 6, DATE '2026-05-13'),
+        ('Mathematics', 'Fractions Test', 'Quiz', 'Term 2', 7, DATE '2026-05-18'),
+        ('Mathematics', 'Data & Statistics Task', 'Worksheet', 'Term 2', 7, DATE '2026-05-20'),
+        ('Mathematics', 'Mid-Term Maths Test', 'Test', 'Term 2', 8, DATE '2026-05-25'),
+        ('Mathematics', 'Geometry Project', 'Project', 'Term 2', 8, DATE '2026-05-27'),
+
+        ('Science', 'Science Concepts Quiz', 'Quiz', 'Term 2', 6, DATE '2026-05-12'),
+        ('Science', 'Lab Observation Report', 'Worksheet', 'Term 2', 6, DATE '2026-05-14'),
+        ('Science', 'Inquiry Skills Test', 'Quiz', 'Term 2', 7, DATE '2026-05-19'),
+        ('Science', 'Hypothesis Worksheet', 'Worksheet', 'Term 2', 7, DATE '2026-05-21'),
+        ('Science', 'Mid-Term Science Test', 'Test', 'Term 2', 8, DATE '2026-05-26'),
+        ('Science', 'Science Fair Project', 'Project', 'Term 2', 8, DATE '2026-05-28'),
+
+        ('HASS', 'Geography Quiz', 'Quiz', 'Term 2', 6, DATE '2026-05-12'),
+        ('HASS', 'History Source Analysis', 'Worksheet', 'Term 2', 6, DATE '2026-05-14'),
+        ('HASS', 'Civics & Citizenship Test', 'Quiz', 'Term 2', 7, DATE '2026-05-19'),
+        ('HASS', 'Economics Reflection Task', 'Worksheet', 'Term 2', 7, DATE '2026-05-21'),
+        ('HASS', 'Mid-Term HASS Assessment', 'Test', 'Term 2', 8, DATE '2026-05-26'),
+        ('HASS', 'Community Project', 'Project', 'Term 2', 8, DATE '2026-05-28'),
+
+        ('Health & PE', 'Fitness Skills Quiz', 'Quiz', 'Term 2', 6, DATE '2026-05-13'),
+        ('Health & PE', 'Movement Assessment', 'Practical', 'Term 2', 6, DATE '2026-05-15'),
+        ('Health & PE', 'Health & Wellbeing Test', 'Quiz', 'Term 2', 7, DATE '2026-05-20'),
+        ('Health & PE', 'Sports Skills Worksheet', 'Worksheet', 'Term 2', 7, DATE '2026-05-22'),
+        ('Health & PE', 'Mid-Term PE Assessment', 'Practical', 'Term 2', 8, DATE '2026-05-27'),
+        ('Health & PE', 'Team Sports Project', 'Project', 'Term 2', 8, DATE '2026-05-29')
+) AS a(subject_name, name, assessment_type, term, week_number, due_date)
+    ON s.subject_name = a.subject_name;

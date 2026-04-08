@@ -47,18 +47,13 @@ UPCOMING_EVENTS = [
     {"title": "Term 2 Reports Released",   "date": "April 22, 2026", "type": "report"},
 ]
 
-import random
-
-def random_color(current_colors=None):
-    colors = [
+SUBJECT_COLORS = [
         "#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F",
         "#EDC948", "#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC"
     ]
 
-    current_colors = current_colors or []
-    available_colors = [c for c in colors if c not in current_colors]
 
-    return random.choice(available_colors) if available_colors else None
+
 
 def _color(id: int) -> str:
     return COLORS[id % len(COLORS)]
@@ -278,6 +273,7 @@ class ParentService:
 
         subjects = []
         current_color = []
+        index=0 
         for r in records:
             score = float(r.score or 0)
             grade = _grade_from_score(r.score)
@@ -298,7 +294,8 @@ class ParentService:
                 .first()
             )
             teacher_comment = obs.teacher_comment if obs else r.teacher_comment or ""
-            color = random_color(current_color)
+            color = SUBJECT_COLORS[index]
+            index +=1 
             current_color.append(color)
             subjects.append({
                 "name":           r.subject,
@@ -332,7 +329,22 @@ class ParentService:
         progress_history = list(weeks_seen.values())
 
         result = {"subjects": subjects, "progressHistory": progress_history}
-        return TranslationService.translate_json(result, pref_lang, db) if pref_lang != "en" else result
+        if pref_lang != "en":
+            translate_result = TranslationService.translate_json(result, pref_lang, db)
+            for i, translated_sub in enumerate(translate_result["subjects"]):
+        # Chèn thêm key 'origin_subject' vào object môn học đã dịch
+        # Giả sử môn học gốc là một object/dict, và bạn chỉ muốn lấy trường "name"
+                translated_sub["origin_subject"] = subjects[i].get("name", "")
+                
+                # NOTE: Nếu bạn muốn chèn nguyên cả object tiếng Anh vào thì dùng:
+                # translated_sub["origin_subject"] = subjects[i]
+                
+            return translate_result
+        
+        for sub in result["subjects"]:
+            sub["origin_subject"] = sub.get("name", "") # Hoặc sub["origin_subject"] = sub
+
+        return result
 
     # ── Activities ────────────────────────────────────────────────────
     @staticmethod
