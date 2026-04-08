@@ -145,7 +145,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
         <div className="px-3 py-4 border-t border-slate-200">
           <Link to="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
             <LogOut size={18} style={{ color: "#94A3B8" }} />
-            <span className="text-sm" style={{ color: "#64748B" }}>{t("back_to_portal")}</span>
+            <span className="text-sm" style={{ color: "#64748B" }}>{t("back_to_portal", { ns: "common" })}</span>
           </Link>
         </div>
       </aside>
