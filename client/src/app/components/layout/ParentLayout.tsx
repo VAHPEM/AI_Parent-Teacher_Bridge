@@ -138,7 +138,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
         {/* School info */}
         <div className="px-5 py-3 border-t border-slate-100" style={{ backgroundColor: "#F8FAFC" }}>
           <p className="text-xs" style={{ color: "#64748B", fontWeight: 500 }}>{t("school")}</p>
-          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{t("term_week", { term: 2, week: 8, year: 2026 })}</p>
+          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{t("term_week", { ns: "common", term: 2, week: 8, year: 2026 })}</p>
         </div>
 
         {/* Bottom */}
