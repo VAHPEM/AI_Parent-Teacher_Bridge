@@ -332,7 +332,22 @@ class ParentService:
         progress_history = list(weeks_seen.values())
 
         result = {"subjects": subjects, "progressHistory": progress_history}
-        return TranslationService.translate_json(result, pref_lang, db) if pref_lang != "en" else result
+        if pref_lang != "en":
+            translate_result = TranslationService.translate_json(result, pref_lang, db)
+            for i, translated_sub in enumerate(translate_result["subjects"]):
+        # Chèn thêm key 'origin_subject' vào object môn học đã dịch
+        # Giả sử môn học gốc là một object/dict, và bạn chỉ muốn lấy trường "name"
+                translated_sub["origin_subject"] = subjects[i].get("name", "")
+                
+                # NOTE: Nếu bạn muốn chèn nguyên cả object tiếng Anh vào thì dùng:
+                # translated_sub["origin_subject"] = subjects[i]
+                
+            return translate_result
+        
+        for sub in result["subjects"]:
+            sub["origin_subject"] = sub.get("name", "") # Hoặc sub["origin_subject"] = sub
+
+        return result
 
     # ── Activities ────────────────────────────────────────────────────
     @staticmethod

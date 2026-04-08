@@ -51,6 +51,7 @@ export function ParentProgress() {
     ).then(d => {
       setSubjects(d.subjects);
       setProgressHistory(d.progressHistory);
+      console.log("Fetched progress data:", d);
     }).finally(() => setIsLoading(false));
   }, [activeChild?.id, language]);
 
@@ -115,7 +116,7 @@ export function ParentProgress() {
               <Legend />
               {
                 subjects.map(subject => (
-                    <Line type="monotone" dataKey={subject.name} stroke={subject.color} strokeWidth={2.5} dot={{ fill: subject.color, r: 4 }} />
+                    <Line type="monotone" dataKey={subject.origin_subject} name={subject.name} stroke={subject.color} strokeWidth={2.5} dot={{ fill: subject.color, r: 4 }} />
                 ))
               }
             </LineChart>
