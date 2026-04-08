@@ -80,7 +80,7 @@ class TeacherService:
 
         # Performance chart: count students per band per week
         # Average each student's score across subjects for that week, then bucket
-        all_student_ids = [s.id for s in db.query(Student.id).all()]
+        all_student_ids = [s.id for s in db.query(Student.id).filter(Student.class_id == cls.id)]
         week_nums = [
             r[0] for r in db.query(WeeklyRecord.week_number)
             .distinct()
@@ -141,6 +141,7 @@ class TeacherService:
         return {
             "teacherName": teacher_name,
             "school":      SCHOOL_NAME,
+            "className": cls.name,
             "stats": {
                 "totalStudents":  total_students,
                 "pendingReviews": pending_reviews,
