@@ -111,7 +111,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             </div>
             <div>
               <p className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>{parent?.name}</p>
-              <p className="text-xs" style={{ color: "#64748B" }}>{t("parent_guardian")}</p>
+              <p className="text-xs" style={{ color: "#64748B" }}>{t("parent_guardian", {ns: "common"})}</p>
             </div>
           </div>
         </div>
