@@ -197,21 +197,21 @@ export function ParentProgress() {
             </div>
 
             {/* Teacher comment */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>{t("teacher_comment_label")}</p>
-              <p className="text-sm" style={{ color: "#374151", lineHeight: "1.7", fontStyle: "italic" }}>
-                "{active.teacherComment}"
-              </p>
-            </div>
+            {/*<div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">*/}
+            {/*  <p className="text-xs mb-2" style={{ fontWeight: 600, color: "#64748B" }}>{t("teacher_comment_label")}</p>*/}
+            {/*  <p className="text-sm" style={{ color: "#374151", lineHeight: "1.7", fontStyle: "italic" }}>*/}
+            {/*    "{active.teacherComment}"*/}
+            {/*  </p>*/}
+            {/*</div>*/}
 
             {/* Achievement standard */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Info size={14} style={{ color: "#2563EB" }} />
-                <p className="text-xs" style={{ fontWeight: 600, color: "#2563EB" }}>{t("curriculum_label")}</p>
-              </div>
-              <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{active.curriculumRef}</p>
-            </div>
+            {/*<div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">*/}
+            {/*  <div className="flex items-center gap-2 mb-2">*/}
+            {/*    <Info size={14} style={{ color: "#2563EB" }} />*/}
+            {/*    <p className="text-xs" style={{ fontWeight: 600, color: "#2563EB" }}>{t("curriculum_label")}</p>*/}
+            {/*  </div>*/}
+            {/*  <p className="text-sm" style={{ color: "#374151", lineHeight: "1.6" }}>{active.curriculumRef}</p>*/}
+            {/*</div>*/}
 
             {/* Strengths & weak areas */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
