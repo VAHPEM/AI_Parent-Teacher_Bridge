@@ -74,13 +74,13 @@ class TeacherService:
         teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
         cls = db.query(Class).filter(Class.teacher_id == teacher_id).first()
 
-        total_students = db.query(Student).count()
+        total_students = db.query(Student).filter(Student.class_id == cls.id).count()
         pending_reviews = db.query(AIReport).filter(AIReport.status.in_(["pending", "draft"])).count()
         flagged = db.query(ParentQuestion).filter(ParentQuestion.status == "open").count()
 
         # Performance chart: count students per band per week
         # Average each student's score across subjects for that week, then bucket
-        all_student_ids = [s.id for s in db.query(Student.id).all()]
+        all_student_ids = [s.id for s in db.query(Student.id).filter(Student.class_id == cls.id)]
         week_nums = [
             r[0] for r in db.query(WeeklyRecord.week_number)
             .distinct()
@@ -141,6 +141,7 @@ class TeacherService:
         return {
             "teacherName": teacher_name,
             "school":      SCHOOL_NAME,
+            "className": cls.name,
             "stats": {
                 "totalStudents":  total_students,
                 "pendingReviews": pending_reviews,

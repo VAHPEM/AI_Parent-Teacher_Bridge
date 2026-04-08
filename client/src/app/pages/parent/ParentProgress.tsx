@@ -113,9 +113,11 @@ export function ParentProgress() {
                 formatter={(value: any) => [`${value}%`, ""]}
               />
               <Legend />
-              <Line type="monotone" dataKey="English" stroke="#2563EB" strokeWidth={2.5} dot={{ fill: "#2563EB", r: 4 }} />
-              <Line type="monotone" dataKey="Mathematics" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", r: 4 }} />
-              <Line type="monotone" dataKey="Science" stroke="#8B5CF6" strokeWidth={2.5} dot={{ fill: "#8B5CF6", r: 4 }} />
+              {
+                subjects.map(subject => (
+                    <Line type="monotone" dataKey={subject.name} stroke={subject.color} strokeWidth={2.5} dot={{ fill: subject.color, r: 4 }} />
+                ))
+              }
             </LineChart>
           </ResponsiveContainer>
         </div>

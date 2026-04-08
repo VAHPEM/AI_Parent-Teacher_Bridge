@@ -111,7 +111,7 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
             </div>
             <div>
               <p className="text-sm" style={{ fontWeight: 500, color: "#1E293B" }}>{parent?.name}</p>
-              <p className="text-xs" style={{ color: "#64748B" }}>{t("parent_guardian")}</p>
+              <p className="text-xs" style={{ color: "#64748B" }}>{t("parent_guardian", {ns: "common"})}</p>
             </div>
           </div>
         </div>
@@ -138,14 +138,14 @@ function ParentLayoutInner({ children }: ParentLayoutProps) {
         {/* School info */}
         <div className="px-5 py-3 border-t border-slate-100" style={{ backgroundColor: "#F8FAFC" }}>
           <p className="text-xs" style={{ color: "#64748B", fontWeight: 500 }}>{t("school")}</p>
-          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{t("term_week", { term: 2, week: 8, year: 2026 })}</p>
+          <p className="text-xs mt-0.5" style={{ color: "#94A3B8" }}>{t("term_week", { ns: "common", term: 2, week: 8, year: 2026 })}</p>
         </div>
 
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-slate-200">
           <Link to="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
             <LogOut size={18} style={{ color: "#94A3B8" }} />
-            <span className="text-sm" style={{ color: "#64748B" }}>{t("back_to_portal")}</span>
+            <span className="text-sm" style={{ color: "#64748B" }}>{t("back_to_portal", { ns: "common" })}</span>
           </Link>
         </div>
       </aside>
