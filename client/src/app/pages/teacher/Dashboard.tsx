@@ -61,7 +61,7 @@ export function TeacherDashboard() {
   const statCards = [
     {
       label: "Total Students", value: data.stats.totalStudents, icon: <Users size={20} />,
-      iconBg: "#EFF6FF", iconColor: "#2563EB", trend: null, sub: "Year 5A Class"
+      iconBg: "#EFF6FF", iconColor: "#2563EB", trend: null, sub: "Year "+ data.className + " Class"
     },
     {
       label: "Pending Reviews", value: data.stats.pendingReviews, icon: <Clock size={20} />,
